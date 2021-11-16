@@ -105,13 +105,18 @@ client.on('interactionCreate', async interaction => {
 						currentPlayers += '\n' + player.displayName;
 					}
 					await interaction.reply(`${member.displayName} joined the game!`);
-					// @TODO: input validation
+          // JOIN VALIDATION: can't be same player twice
+          // max capacity hit, cannot join
 				}
 				break;
 			case 'start':
 				if (curPhase !== gamePhase.WAITING_FOR_JOIN) {
 					await interaction.reply({ content: `Unable to start game because the gamePhase is ${gamePhase} `, ephemeral: true });
 				} else {
+          if () { // START VALIDATION: not enough players check
+            // message
+            break;
+          }
 					curPhase = gamePhase.WAITING_FOR_PLAY;
 					// @TODO: input validation
 					await interaction.reply('Start!');
@@ -129,27 +134,28 @@ client.on('interactionCreate', async interaction => {
 				}
 				break;
 			case 'play':
-				if (curPhase !== gamePhase.WAITING_FOR_PLAY) {
-					await interaction.reply({ content: `Invalid command; the current gamePhase is ${gamePhase} `, ephemeral: true });
+        if (curPhase !== gamePhase.WAITING_FOR_PLAY) {
+          await interaction.reply({ content: `Invalid command; the current gamePhase is ${gamePhase} `, ephemeral: true });
 				} else {
-					const play = interaction.options.getString('cards');
-
+          const play = interaction.options.getString('cards');
           // STEP 1: play card(s)
 
           if (play !== yield) {
-            // check if all cards are from hand:
-            // (arr, target) => target.every(v => arr.includes(v));
-            // check if multiple cards condition is met (animal companion and triples)
+            if () { // PLAY VALIDATION: 
+              // check if all cards are from hand: (arr, target) => target.every(v => arr.includes(v));
+              // check same value rule
+              // animal companion rule (cannot be jester, 2 animals?)
+            }
             
             // STEP 2: suit power (reds)
 
             makePlay(state, play);
             const activeSuits = getCurrPlayerActiveSuits(state);
             const attackValue = getCurrPlayerAttackValue(state);
-            if (activeSuits.includes('H')) {
+            if (activeSuits.includes('H')) { // enum
               healFromDiscardPile(state, attackValue);
             }
-            if (activeSuits.includes('D')) {
+            if (activeSuits.includes('D')) { // enum
               dealCards(state, attackValue)
             }
 
@@ -162,6 +168,7 @@ client.on('interactionCreate', async interaction => {
               discardPlayerPlays(state);
               if (state.royal.health === 0) {
                 state.tavernPile.unshift(state.royal.activeCard);
+                // msg: juggernaut was moved to tavern pile
               } else {
                 state.discardPile.push(state.royal.activeCard);
               }
@@ -178,6 +185,10 @@ client.on('interactionCreate', async interaction => {
               curPhase = gamePhase.WAITING_FOR_DISCARD;
               const royalAttackValue = getRoyalAttackValue(state);
               // check if game lose (0 hp is valid to continue)
+              if (royalAttackValue > getCurrPlayerHealth(state)) {
+                await interaction.reply(`YOU LOSE attack: ${royalAttackValue}, health: ${getCurrPlayerHealth(state)}`);
+                break;
+              }
               await interaction.reply(`Waiting for Discard, value: ${royalAttackValue}`);
             }
           } else { // yield
@@ -190,6 +201,10 @@ client.on('interactionCreate', async interaction => {
 					await interaction.reply({ content: `Invalid command; the current gamePhase is ${gamePhase} `, ephemeral: true });
 				} else {
 					const discardCards = interaction.options.getString('cards');
+          if () { // DISCARD VALIDATION: cards are from hand
+            // check if discard value value is enough
+            // check if value excessive(?)
+          }
 					await interaction.reply('Discard!');
           // STEP 4:
           discard(state, discardCards);
@@ -453,7 +468,7 @@ function getCurrPlayerActiveSuits(state) {
   const suits = latestPlay.map(card => card.suit);
   return state.isJesterPlayed
     ? suits
-    : suits.filter(card => card !== state.royal.activeCard.suit);
+    : suits.filter(card => card.suit !== state.royal.activeCard.suit);
 }
 
 function discardPlayerPlays(state) {
@@ -471,6 +486,7 @@ function healFromDiscardPile(state, numCards) {
   while (numCards > 0 && state.discardPile.length > 0) {
     const card = state.discardPile.pop();
     state.tavernDeck.push(card);
+    numCards--;
   }
 }
 
@@ -507,21 +523,17 @@ function discard(state, cards) {
 }
 
 function initGameState(members) {
-  
   let state = getNewState();
-
   members.forEach(member => addPlayer(state, member));
-  
   state = setMetaStates(state);
-  
   initDecks(state);
-  
   dealCards(state);
-
   drawNewRoyal(state);
-
   return state;
+}
 
+function getCardValues(cards) {
+  return cards.reduce((sum, card) => sum + card.value, 0);
 }
 
 // visual helpers:
@@ -537,7 +549,6 @@ function showHands(state) {
 }
 
 // TODOS:
-// do step logic
 // cover edge cases
 // factor out hard codes
 // clean up enums
