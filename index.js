@@ -56,6 +56,20 @@ const gamePhase = {
 
 let curPhase = gamePhase.IDLE;
 
+// game variables
+const suits = [ 'C', 'S', 'H', 'D'];
+const playerValues = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+const royalValues = ['J', 'Q', 'K'];
+const jesterValue = 'W';
+const attackValueMap = {
+  A: 1, 2: 2, 3: 3, 4: 4, 5: 5,
+  6: 6, 7: 7, 8: 8, 9: 9, 10: 10,
+  J: 10, Q: 15, K: 20, W: 0,
+};
+const royalHealthMap = { J: 20, Q: 30, K: 40 };
+
+let state = null;
+
 // read interactions
 client.on('interactionCreate', async interaction => {
 	if (!interaction.isCommand()) return;
@@ -111,22 +125,75 @@ client.on('interactionCreate', async interaction => {
 						memberThreads[player.id] = await thread;
 						await thread.members.add(player.id);
 					}
+          state = initGameState(members);
 				}
 				break;
 			case 'play':
 				if (curPhase !== gamePhase.WAITING_FOR_PLAY) {
 					await interaction.reply({ content: `Invalid command; the current gamePhase is ${gamePhase} `, ephemeral: true });
 				} else {
-					const cards = interaction.options.getString('cards');
-					await interaction.reply('Play!');
+					const play = interaction.options.getString('cards');
+
+          // STEP 1: play card(s)
+
+          if (play !== yield) {
+            // check if all cards are from hand:
+            // (arr, target) => target.every(v => arr.includes(v));
+            // check if multiple cards condition is met (animal companion and triples)
+            
+            // STEP 2: suit power (reds)
+
+            makePlay(state, play);
+            const activeSuits = getCurrPlayerActiveSuits(state);
+            const attackValue = getCurrPlayerAttackValue(state);
+            if (activeSuits.includes('H')) {
+              healFromDiscardPile(state, attackValue);
+            }
+            if (activeSuits.includes('D')) {
+              dealCards(state, attackValue)
+            }
+
+            // check if jester
+
+            // STEP 3: deal damage
+            const playerAttackValue = getCurrPlayerAttackValue(state);
+            state.royal.health -= playerAttackValue;
+            if (state.royal.health <= 0) {
+              discardPlayerPlays(state);
+              if (state.royal.health === 0) {
+                state.tavernPile.unshift(state.royal.activeCard);
+              } else {
+                state.discardPile.push(state.royal.activeCard);
+              }
+              state.royal.activeCard = null;
+              state.royal.health = null;
+              if (state.castleDeck.length === 0) {
+                curPhase = gamePhase.IDLE;
+                await interaction.reply('YOU WON LOL');
+              } else {
+                drawNewRoyal(state);
+              }
+            } else {
+              // STEP 4 (START):
+              curPhase = gamePhase.WAITING_FOR_DISCARD;
+              const royalAttackValue = getRoyalAttackValue(state);
+              // check if game lose (0 hp is valid to continue)
+              await interaction.reply(`Waiting for Discard, value: ${royalAttackValue}`);
+            }
+          } else { // yield
+          }
 				}
+
 				break;
 			case 'discard':
 				if (curPhase !== gamePhase.WAITING_FOR_DISCARD) {
 					await interaction.reply({ content: `Invalid command; the current gamePhase is ${gamePhase} `, ephemeral: true });
 				} else {
-					const cards = interaction.options.getString('cards');
+					const discardCards = interaction.options.getString('cards');
 					await interaction.reply('Discard!');
+          // STEP 4:
+          discard(state, discardCards);
+          state.currPlayerIdx = [state.currPlayerIdx + 1] % state.players.length;
 				}
 				break;
 			case 'end-game':
@@ -229,30 +296,9 @@ for (const file of eventFiles) {
 // 			.setDescription('The input to echo back')
 // 			.setRequired(true));
 
-
-// Login to Discord with your client's token
-client.login(token);
-client.on('messageCreate', (message) => {
-});
-
 // Login to Discord with your client's token
 client.login(token);
 
-const suits = [ 'C', 'S', 'H', 'D'];
-
-const playerValues = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
-
-const royalValues = ['J', 'Q', 'K'];
-
-const jesterValue = 'W';
-
-const attackValueMap = {
-  A: 1, 2: 2, 3: 3, 4: 4, 5: 5,
-  6: 6, 7: 7, 8: 8, 9: 9, 10: 10,
-  J: 10, Q: 15, K: 20, W: 0,
-};
-
-const royalHealthMap = { J: 20, Q: 30, K: 40 };
 
 // player = {
 //   displayName: string,
@@ -264,6 +310,7 @@ const royalHealthMap = { J: 20, Q: 30, K: 40 };
 function getNewState() {
   return {
     // meta:
+    currPlayerIdx: null,
     maxHandSize: null,
     numJesters: null,
     // battle:
@@ -277,7 +324,6 @@ function getNewState() {
     castleDeck: [],
     tavernDeck: [],
     // misc:
-    currPlayerIdx: 0,
     yieldCount: 0,
     isJesterPlayed: false,
   }
@@ -293,6 +339,7 @@ function addPlayer(state, { displayName, id }) {
 }
 
 function setMetaStates(state) {
+  state.currPlayerIdx =  Math.floor((Math.random() * state.players.length));
   switch (state.players.length) {
     case 2:
       state.maxHandSize = 7;
@@ -459,13 +506,6 @@ function discard(state, cards) {
   }
 }
 
-const members = [
-  { displayName: 'romebop', id: '009' },
-  { displayName: 'timkimcool', id: '9000' },
-  { displayName: 'titus', id: '007' },
-  { displayName: 'josh', id: '1' }
-];
-
 function initGameState(members) {
   
   let state = getNewState();
@@ -482,75 +522,6 @@ function initGameState(members) {
 
   return state;
 
-}
-
-let state = initGameState(members);
-
-let isGameOver = false;
-while (!isGameOver) {
-  const player = state.players[state.currPlayerIdx];
-  // BOT MSG: it's [player]'s turn.
-  // RECEIVE: [play]
-  const play = 'reply'; // [ ...cards]
-
-  // step 1: play card(s)
-  if (play !== yield) {
-
-    // check if all cards are from hand:
-    // (arr, target) => target.every(v => arr.includes(v));
-    // check if multiple cards condition is met (animal companion and triples)
-    // step 2: suit power (reds)
-
-    const playCards = 'reply';
-    makePlay(state, playCards);
-    
-    const activeSuits = getCurrPlayerActiveSuits(state);
-    const attackValue = getCurrPlayerAttackValue(state);
-
-    if (activeSuits.includes('H')) {
-      healFromDiscardPile(state, attackValue);
-    }
-
-    if (activeSuits.includes('D')) {
-      dealCards(state, attackValue)
-    }
-
-
-    // check if jester
-
-    // step 3: deal damage
-    const playerAttackValue = getCurrPlayerAttackValue(state);
-    state.royal.health -= playerAttackValue;
-    if (state.royal.health <= 0) {
-      discardPlayerPlays(state);
-      if (state.royal.health === 0) {
-        state.tavernPile.unshift(state.royal.activeCard);
-      } else {
-        state.discardPile.push(state.royal.activeCard);
-      }
-      state.royal.activeCard = null;
-      state.royal.health = null;
-      if (state.castleDeck.length === 0) {
-        isGameOver = true;
-      } else {
-        drawNewRoyal(state);
-      }
-      continue;
-    }
-  } else { // yield
-
-  }
-
-  // step 4: receive damage
-  const royalAttackValue = getRoyalAttackValue(state);
-
-  // bot interaction
-
-  const discardCards = 'reply' // [ ...cards]
-  discard(state, discardCards);
-
-
-  state.currPlayerIdx = [state.currPlayerIdx + 1] % state.players.length;
 }
 
 // visual helpers:
