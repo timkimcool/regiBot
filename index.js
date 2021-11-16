@@ -50,7 +50,7 @@ const attackValueMap = {
 const royalHealthMap = { J: 20, Q: 30, K: 40 };
 
 // player = {
-//   username: string,
+//   displayName: string,
 //   id: string,
 //   hand: [cards],
 //   plays: [[],[]],
@@ -78,9 +78,9 @@ function getNewState() {
   }
 }
 
-function addPlayer(state, { username, id }) {
+function addPlayer(state, { displayName, id }) {
   state.players.push({
-    username,
+    displayName,
     id, 
     hand: [],
     plays: [],
@@ -254,20 +254,20 @@ function discard(state, cards) {
   }
 }
 
-const users = [
-  { username: 'romebop', id: '009' },
-  { username: 'timkimcool', id: '9000' },
-  { username: 'titus', id: '007' },
-  { username: 'josh', id: '1' }
+const members = [
+  { displayName: 'romebop', id: '009' },
+  { displayName: 'timkimcool', id: '9000' },
+  { displayName: 'titus', id: '007' },
+  { displayName: 'josh', id: '1' }
 ];
 
-function initGameState(users) {
+function initGameState(members) {
   
   let state = getNewState();
 
-  users.forEach(user => addPlayer(state, user));
+  members.forEach(member => addPlayer(state, member));
   
-  setMetaStates(state);
+  state = setMetaStates(state);
   
   initDecks(state);
   
@@ -279,7 +279,7 @@ function initGameState(users) {
 
 }
 
-let state = initGameState(users);
+let state = initGameState(members);
 
 let isGameOver = false;
 while (!isGameOver) {
@@ -338,6 +338,9 @@ while (!isGameOver) {
 
   // step 4: receive damage
   const royalAttackValue = getRoyalAttackValue(state);
+
+  // bot interaction
+
   const discardCards = 'reply' // [ ...cards]
   discard(state, discardCards);
 
@@ -353,7 +356,7 @@ function stringifyCard(card) {
 
 function showHands(state) {
   state.players.forEach(player => {
-    console.log(`${player.username}:`, player.hand.map(stringifyCard));
+    console.log(`${player.displayName}:`, player.hand.map(stringifyCard));
   });
 }
 
@@ -364,6 +367,7 @@ function showHands(state) {
 // clean up enums
 // handle error cases
 // identify bot interaction spots 
+// { command, snapshot } history
 
 /*
 Starting game
@@ -382,7 +386,7 @@ Initialize game state
 
   gameState = {
     player = {
-      username: string,
+      displayName: string,
       id: string,
       cardsInHand: [cards],
       activeCards: [[],[]],
