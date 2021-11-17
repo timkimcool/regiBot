@@ -97,6 +97,7 @@ client.on('interactionCreate', async interaction => {
 				}
         curPhase = GamePhase.WAITING_FOR_JOIN;
         channel.send('New Game! Type "/join" to join the game');
+        channel = interaction.channel;
 				break;
 			case 'join':
 				if (curPhase !== GamePhase.WAITING_FOR_JOIN) {
@@ -113,7 +114,6 @@ client.on('interactionCreate', async interaction => {
           break;
         }
         members.push(member);
-        channel = interaction.channel;
         let currentPlayers = "Current Players: ";
         for (const member of members) {
           currentPlayers += '\n' + member.displayName;
@@ -134,7 +134,7 @@ client.on('interactionCreate', async interaction => {
         for (const member of members) {
           // create thread;
           let thread = await channel.threads.create({
-            name: `${member.displayName}'s hand`,
+            name: `${member.displayName} hand`,
             autoArchiveDuration: 60,
             reason: 'Separate thread for your hand',
           });
@@ -143,8 +143,12 @@ client.on('interactionCreate', async interaction => {
         }
         state = initGameState(members);
         channel.send(stringifyState(state));
+        for (let i = 0; i < members.length; i++) {
+          let thread = memberThreads[Object.keys(memberThreads)[i]];
+          thread.send(state.players[i].hand);
+        }
 				break;
-			case 'play':
+			case 'play':  
         if (curPhase !== GamePhase.WAITING_FOR_PLAY) {
           await interaction.reply({ content: `Invalid command; the current GamePhase is ${curPhase} `, ephemeral: true });
           break;
@@ -240,13 +244,14 @@ client.on('interactionCreate', async interaction => {
           channel.send(`Waiting for Discard, value: ${royalAttackValue}`);
         }
         channel.send({ content: stringifyState(state) });
+        memberThreads[state[currPlayerIdx]].send(state.players[i].hand);
 				break;
       case 'jester':
         if (curPhase !== GamePhase.WAITING_FOR_JESTER) {
           await interaction.reply({ content: `Invalid command; the current GamePhase is ${curPhase} `, ephemeral: true });
           break;
         }
-        const displayName = interaction.options.getString('displayName');
+        const displayName = interaction.options.getString('display-name');
         if (!members.map(m => m.displayName).includes(displayName)) {
           await interaction.reply({ content: `The displayName you selected is not recognized: ${displayName}`, ephemeral: true });
           break;
@@ -260,11 +265,10 @@ client.on('interactionCreate', async interaction => {
 					await interaction.reply({ content: `Invalid command; the current GamePhase is ${curPhase} `, ephemeral: true });
           break;
 				}
-        const discardCards = interaction.options.getString('cards');
+        const discardCards = playToCards(interaction.options.getString('cards'));
         if (!isValidCards(discardCards)) {
           break;
         }
-        const discardCards = playToCards(discardCards);
         // check if all cards are from hand
         if (doCardsExistInHand(state, discardCards)) { 
           break;
@@ -274,10 +278,12 @@ client.on('interactionCreate', async interaction => {
         channel.send('Discard!');
         // STEP 4:
         discard(state, discardCards);
+        curPhase = GamePhase.WAITING_FOR_PLAY;
         channel.send({ content: stringifyState(state) });
         state.currPlayerIdx = [state.currPlayerIdx + 1] % state.players.length;
         channel.send({ content: `It is ${state.players[state.currPlayerIdx].displayName}'s turn` });
-        curPhase = GamePhase.WAITING_FOR_PLAY;
+        // @TODO: lose condition
+        memberThreads[state[currPlayerIdx]].send(state.players[i].hand);
 				break;
 			case 'end-game':
 				channel.send('End Game!');
@@ -444,7 +450,7 @@ function dealCards(state, numCards = Number.POSITIVE_INFINITY) {
       player.hand.push(card);
       numCards--;
     }
-    dealIdx = (dealIdx + 1) % getNumPlayers(state);
+    dealIdx = (dealIdx + 1) % state.players.length;
   }
 }
 
@@ -550,7 +556,7 @@ function discard(state, cards) {
 function initGameState(members) {
   let state = getNewState();
   members.forEach(member => addPlayer(state, member));
-  state = setMetaStates(state);
+  setMetaStates(state);
   initDecks(state);
   dealCards(state);
   drawNewRoyal(state);
@@ -610,6 +616,7 @@ function doCardsExistInHand(state, cards) {
   return cards.reduce((acc, card) => 
     acc && handMap.hasOwnProperty(stringifyCard(card))
     , true);
+}
 
 function stringifyState(state) {
   const deckStr = `Discard Pile count: ${state.discardPile.length}`
