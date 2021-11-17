@@ -1,4 +1,3 @@
-// Require the necessary discord.js classes
 const fs = require('fs');
 const { Client, Collection, Intents } = require('discord.js');
 const { token, clientId, guildId } = require('./config.json');
@@ -6,7 +5,6 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
 
-// Create a new client instance
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
 client.commands = new Collection();
 
@@ -47,17 +45,22 @@ const rest = new REST({ version: '9' }).setToken(token);
 let members = [];
 let memberThreads = {};
 let channel = null;
-const gamePhase = {
+const GamePhase = {
 	IDLE: 'idle',
 	WAITING_FOR_JOIN: 'waiting for join',
 	WAITING_FOR_PLAY: 'waiting for play',
 	WAITING_FOR_DISCARD: 'waiting for discard',
 }
 
-let curPhase = gamePhase.IDLE;
+let curPhase = GamePhase.IDLE;
 
 // game variables
-const suits = [ 'C', 'S', 'H', 'D'];
+const Suit = {
+  CLUB: 'C',
+  SPADE: 'S',
+  HEART: 'H',
+  DIAMOND: 'D',
+};
 const playerValues = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 const royalValues = ['J', 'Q', 'K'];
 const jesterValue = 'W';
@@ -67,17 +70,13 @@ const attackValueMap = {
   J: 10, Q: 15, K: 20, W: 0,
 };
 const royalHealthMap = { J: 20, Q: 30, K: 40 };
-
 let state = null;
 
 // read interactions
 client.on('interactionCreate', async interaction => {
 	if (!interaction.isCommand()) return;
-
 	const command = client.commands.get(interaction.commandName);
-
 	if (!command) return;
-
 	try {
 		console.log(interaction.commandName);
 		switch (interaction.commandName) {
@@ -85,137 +84,138 @@ client.on('interactionCreate', async interaction => {
 				await interaction.reply('Pong!');
 				break;
 			case 'new-game':
-				if (curPhase !== gamePhase.IDLE) {
+				if (curPhase !== GamePhase.IDLE) {
 					await interaction.reply({ content: 'Game already in progress!', ephemeral: true });
-				} else {
-					// @TODO: trigger new game
-					curPhase = gamePhase.WAITING_FOR_JOIN;
-					await interaction.reply('New Game! Type "/join" to join the game');
+          break;
 				}
+        curPhase = GamePhase.WAITING_FOR_JOIN;
+        await interaction.reply('New Game! Type "/join" to join the game');
 				break;
 			case 'join':
-				if (curPhase !== gamePhase.WAITING_FOR_JOIN) {
-					await interaction.reply({ content: 'Please start a new game first! (/new_game)', ephemeral: true });
-				} else {
-					let member = interaction.member;	// member object used to add to thread
-					players.push(member);
-					channel = interaction.channel;
-					let currentPlayers = "Current Players: ";
-					for (const member of members) {
-						currentPlayers += '\n' + player.displayName;
-					}
-					await interaction.reply(`${member.displayName} joined the game!`);
-          // JOIN VALIDATION: can't be same player twice
-          // max capacity hit, cannot join
+				if (curPhase !== GamePhase.WAITING_FOR_JOIN) {
+					await interaction.reply({ content: 'Please start a new game first! (/new-game)', ephemeral: true });
+          break;
 				}
+        if (members.length === 4) {
+          await interaction.reply({ content: 'Maximum players reached!', ephemeral: true });
+          break;
+        }
+        const member = interaction.member;
+        if (members.find(m => m.id === member.id)) {
+          await interaction.reply({ content: 'You have already joined the game.', ephemeral: true });
+          break;
+        }
+        members.push(member);
+        channel = interaction.channel;
+        let currentPlayers = "Current Players: ";
+        for (const member of members) {
+          currentPlayers += '\n' + player.displayName;
+        }
+        await interaction.reply(`${member.displayName} joined the game!`);
 				break;
 			case 'start':
-				if (curPhase !== gamePhase.WAITING_FOR_JOIN) {
-					await interaction.reply({ content: `Unable to start game because the gamePhase is ${gamePhase} `, ephemeral: true });
-				} else {
-          if () { // START VALIDATION: not enough players check
-            // message
-            break;
-          }
-					curPhase = gamePhase.WAITING_FOR_PLAY;
-					// @TODO: input validation
-					await interaction.reply('Start!');
-					for (const member of members) {
-						// create thread;
-						let thread = await channel.threads.create({
-							name: `${player.displayName}'s hand`,
-							autoArchiveDuration: 60,
-							reason: 'Separate thread for your hand',
-						});
-						memberThreads[player.id] = await thread;
-						await thread.members.add(player.id);
-					}
-          state = initGameState(members);
+				if (curPhase !== GamePhase.WAITING_FOR_JOIN) {
+					await interaction.reply({ content: `Unable to start game because the GamePhase is ${GamePhase} `, ephemeral: true });
+          break;
 				}
+        if (members.length < 2) {
+					await interaction.reply({ content: `Not enough players to start the game.`);
+          break;
+        }
+        curPhase = GamePhase.WAITING_FOR_PLAY;
+        await interaction.reply('Start!');
+        for (const member of members) {
+          // create thread;
+          let thread = await channel.threads.create({
+            name: `${player.displayName}'s hand`,
+            autoArchiveDuration: 60,
+            reason: 'Separate thread for your hand',
+          });
+          memberThreads[player.id] = await thread;
+          await thread.members.add(player.id);
+        }
+        state = initGameState(members);
 				break;
 			case 'play':
-        if (curPhase !== gamePhase.WAITING_FOR_PLAY) {
-          await interaction.reply({ content: `Invalid command; the current gamePhase is ${gamePhase} `, ephemeral: true });
-				} else {
-          const play = interaction.options.getString('cards');
-          // STEP 1: play card(s)
-
-          if (play !== yield) {
-            if () { // PLAY VALIDATION: 
-              // check if all cards are from hand: (arr, target) => target.every(v => arr.includes(v));
-              // check same value rule
-              // animal companion rule (cannot be jester, 2 animals?)
-            }
-            
-            // STEP 2: suit power (reds)
-
-            makePlay(state, play);
-            const activeSuits = getCurrPlayerActiveSuits(state);
-            const attackValue = getCurrPlayerAttackValue(state);
-            if (activeSuits.includes('H')) { // enum
-              healFromDiscardPile(state, attackValue);
-            }
-            if (activeSuits.includes('D')) { // enum
-              dealCards(state, attackValue)
-            }
-
-            // check if jester
-
-            // STEP 3: deal damage
-            const playerAttackValue = getCurrPlayerAttackValue(state);
-            state.royal.health -= playerAttackValue;
-            if (state.royal.health <= 0) {
-              discardPlayerPlays(state);
-              if (state.royal.health === 0) {
-                state.tavernPile.unshift(state.royal.activeCard);
-                // msg: juggernaut was moved to tavern pile
-              } else {
-                state.discardPile.push(state.royal.activeCard);
-              }
-              state.royal.activeCard = null;
-              state.royal.health = null;
-              if (state.castleDeck.length === 0) {
-                curPhase = gamePhase.IDLE;
-                await interaction.reply('YOU WON LOL');
-              } else {
-                drawNewRoyal(state);
-              }
-            } else {
-              // STEP 4 (START):
-              curPhase = gamePhase.WAITING_FOR_DISCARD;
-              const royalAttackValue = getRoyalAttackValue(state);
-              // check if game lose (0 hp is valid to continue)
-              if (royalAttackValue > getCurrPlayerHealth(state)) {
-                await interaction.reply(`YOU LOSE attack: ${royalAttackValue}, health: ${getCurrPlayerHealth(state)}`);
-                break;
-              }
-              await interaction.reply(`Waiting for Discard, value: ${royalAttackValue}`);
-            }
-          } else { // yield
-          }
+        if (curPhase !== GamePhase.WAITING_FOR_PLAY) {
+          await interaction.reply({ content: `Invalid command; the current GamePhase is ${GamePhase} `, ephemeral: true });
+          break;
 				}
+        const play = parsePlay(interaction.options.getString('cards'));
+        // STEP 1: play card(s)
 
+        if (play !== 'yield') {
+          if () { // PLAY VALIDATION: 
+            // check if all cards are from hand
+            // check same value rule
+            // animal companion rule (cannot be jester, 2 animals?)
+          }
+          
+          // STEP 2: suit power (reds)
+
+          makePlay(state, play);
+          const activeSuits = getCurrPlayerActiveSuits(state);
+          const attackValue = getCurrPlayerAttackValue(state);
+          if (activeSuits.includes(Suits.HEART)) {
+            healFromDiscardPile(state, attackValue);
+          }
+          if (activeSuits.includes(Suits.Diamond)) {
+            dealCards(state, attackValue)
+          }
+
+          // check if jester
+
+          // STEP 3: deal damage
+          const playerAttackValue = getCurrPlayerAttackValue(state);
+          state.royal.health -= playerAttackValue;
+          if (state.royal.health <= 0) {
+            discardPlayerPlays(state);
+            if (state.royal.health === 0) {
+              state.tavernPile.unshift(state.royal.activeCard);
+              // msg: juggernaut was moved to tavern pile
+            } else {
+              state.discardPile.push(state.royal.activeCard);
+            }
+            state.royal.activeCard = null;
+            state.royal.health = null;
+            if (state.castleDeck.length === 0) {
+              curPhase = GamePhase.IDLE;
+              await interaction.reply('YOU WON LOL');
+            } else {
+              drawNewRoyal(state);
+            }
+          } else {
+            // STEP 4 (START):
+            curPhase = GamePhase.WAITING_FOR_DISCARD;
+            const royalAttackValue = getRoyalAttackValue(state);
+            // check if game lose (0 hp is valid to continue)
+            if (royalAttackValue > getCurrPlayerHealth(state)) {
+              await interaction.reply(`YOU LOSE attack: ${royalAttackValue}, health: ${getCurrPlayerHealth(state)}`);
+              break;
+            }
+            await interaction.reply(`Waiting for Discard, value: ${royalAttackValue}`);
+          }
+        } else { // yield
+        }
 				break;
 			case 'discard':
-				if (curPhase !== gamePhase.WAITING_FOR_DISCARD) {
-					await interaction.reply({ content: `Invalid command; the current gamePhase is ${gamePhase} `, ephemeral: true });
-				} else {
-					const discardCards = interaction.options.getString('cards');
-          if () { // DISCARD VALIDATION: cards are from hand
-            // check if discard value value is enough
-            // check if value excessive(?)
-          }
-					await interaction.reply('Discard!');
-          // STEP 4:
-          discard(state, discardCards);
-          state.currPlayerIdx = [state.currPlayerIdx + 1] % state.players.length;
+				if (curPhase !== GamePhase.WAITING_FOR_DISCARD) {
+					await interaction.reply({ content: `Invalid command; the current GamePhase is ${GamePhase} `, ephemeral: true });
+          break;
 				}
+        const discardCards = interaction.options.getString('cards');
+        if () { // DISCARD VALIDATION: cards are from hand
+          // check if discard value value is enough
+          // check if value excessive(?)
+        }
+        await interaction.reply('Discard!');
+        // STEP 4:
+        discard(state, discardCards);
+        state.currPlayerIdx = [state.currPlayerIdx + 1] % state.players.length;
 				break;
 			case 'end-game':
 				await interaction.reply('End Game!');
 				break;
-			default:
-				await interaction.reply('DEFAULT!');
 		}
 		// await command.execute(interaction);
 	} catch (error) {
@@ -225,9 +225,7 @@ client.on('interactionCreate', async interaction => {
 });
 
 
-function botSendMessage() {
-
-}
+function botSendMessage() {}
 
 function botSendEmbedMessage(channel, msg) {
 	const exampleEmbed = {
@@ -314,18 +312,9 @@ for (const file of eventFiles) {
 // Login to Discord with your client's token
 client.login(token);
 
-
-// player = {
-//   displayName: string,
-//   id: string,
-//   hand: [cards],
-//   plays: [[],[]],
-// }
-
 function getNewState() {
   return {
     // meta:
-    currPlayerIdx: null,
     maxHandSize: null,
     numJesters: null,
     // battle:
@@ -339,6 +328,7 @@ function getNewState() {
     castleDeck: [],
     tavernDeck: [],
     // misc:
+    currPlayerIdx: 0,
     yieldCount: 0,
     isJesterPlayed: false,
   }
@@ -354,28 +344,15 @@ function addPlayer(state, { displayName, id }) {
 }
 
 function setMetaStates(state) {
-  state.currPlayerIdx =  Math.floor((Math.random() * state.players.length));
-  switch (state.players.length) {
-    case 2:
-      state.maxHandSize = 7;
-      state.numJesters = 0;
-      break;
-    case 3:
-      state.maxHandSize = 6;
-      state.numJesters = 1;
-      break;
-    case 4:
-      state.maxHandSize = 5;
-      state.numJesters = 2;
-      break;
-  }
+  state.maxHandSize = 9 - state.players.length;
+  state.numJesters = state.players.length - 2;
 }
 
 function getPlayerCards(state) {
   const cards = [];
-  for (let value of playerValues) {
-    for (let suit of suits) {
-      cards.push({ value, suit });
+  for (const value of playerValues) {
+    for (const key in Suit) {
+      cards.push({ value, suit: Suit[key] });
     }
   }
   for (let i = 0; i < state.numJesters; i++) {
@@ -386,9 +363,9 @@ function getPlayerCards(state) {
 
 function getRoyalCards() {
   const cards = [];
-  for (let value of royalValues) {
-    for (let suit of suits) {
-      cards.push({ value, suit });
+  for (const value of royalValues) {
+    for (const key in Suit) {
+      cards.push({ value, suit: Suit[key] });
     }
   }
   return cards;
@@ -458,7 +435,7 @@ function getCurrPlayerAttackValue(state) {
   const attackValue = latestPlay.reduce((sum, card) => (
     sum + attackValueMap[card.value]
   ), 0);
-  const hasClub = getCurrPlayerActiveSuits(state).includes('C');
+  const hasClub = getCurrPlayerActiveSuits(state).includes(Suit.CLUB);
   return hasClub ? (attackValue * 2) : attackValue;
 }
 
@@ -493,7 +470,7 @@ function healFromDiscardPile(state, numCards) {
 function getRoyalAttackValue(state) {
   if (state.isJesterPlayed) return state.royal.attackValue;
   const shieldValue = getAllCardsInPlay(state).reduce((sum, card) => (
-    sum + (card.suit === 'S' ? card.value : 0)
+    sum + (card.suit === Suit.SPADE ? card.value : 0)
   ), 0)
   const royalAttackValue = state.royal.attackValue - shieldValue;
   return royalAttackValue < 0 ? 0 : royalAttackValue;
@@ -536,7 +513,9 @@ function getCardValues(cards) {
   return cards.reduce((sum, card) => sum + card.value, 0);
 }
 
-// visual helpers:
+function parsePlay(input) {} // TODO
+
+// print helpers:
 
 function stringifyCard(card) {
   return card.value + (card.suit ? `|${card.suit}` : '');
@@ -549,11 +528,8 @@ function showHands(state) {
 }
 
 // TODOS:
-// cover edge cases
-// factor out hard codes
-// clean up enums
-// handle error cases
-// identify bot interaction spots 
+// implement yield and jester logic
+// handle input validations
 // { command, snapshot } history
 
 /*
