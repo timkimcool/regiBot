@@ -4,6 +4,7 @@ const { token, clientId, guildId } = require('./config.json');
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
+const { stringify } = require('querystring');
 
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
 client.commands = new Collection();
@@ -22,20 +23,11 @@ const rest = new REST({ version: '9' }).setToken(token);
 (async () => {
 	try {
 		console.log('Started refreshing application (/) commands.');
-		// test
-
-		// for global; updated in an hour
-		// await rest.put(
-		// 	Routes.applicationCommands(clientId),
-		// 	{ body: commands },
-		// );
-
 		// guild commands updated instantly
 		await rest.put(
 			Routes.applicationGuildCommands(clientId, guildId),
 			{ body: commands },
 		);
-
 		console.log('Successfully reloaded application (/) commands.');
 	} catch (error) {
 		console.error(error);
@@ -51,7 +43,6 @@ const GamePhase = {
 	WAITING_FOR_PLAY: 'waiting for play',
 	WAITING_FOR_DISCARD: 'waiting for discard',
 }
-
 let curPhase = GamePhase.IDLE;
 
 // game variables
@@ -71,6 +62,12 @@ const attackValueMap = {
 };
 const royalHealthMap = { J: 20, Q: 30, K: 40 };
 let state = null;
+
+// card = {
+//   value: string,
+//   suit: Suit.diamond,
+//   
+// }
 
 // read interactions
 client.on('interactionCreate', async interaction => {
@@ -109,7 +106,7 @@ client.on('interactionCreate', async interaction => {
         channel = interaction.channel;
         let currentPlayers = "Current Players: ";
         for (const member of members) {
-          currentPlayers += '\n' + player.displayName;
+          currentPlayers += '\n' + member.displayName;
         }
         await interaction.reply(`${member.displayName} joined the game!`);
 				break;
@@ -119,7 +116,7 @@ client.on('interactionCreate', async interaction => {
           break;
 				}
         if (members.length < 2) {
-					await interaction.reply({ content: `Not enough players to start the game.`);
+					await interaction.reply({ content: `Not enough players to start the game.`});
           break;
         }
         curPhase = GamePhase.WAITING_FOR_PLAY;
@@ -127,12 +124,12 @@ client.on('interactionCreate', async interaction => {
         for (const member of members) {
           // create thread;
           let thread = await channel.threads.create({
-            name: `${player.displayName}'s hand`,
+            name: `${member.displayName}'s hand`,
             autoArchiveDuration: 60,
             reason: 'Separate thread for your hand',
           });
-          memberThreads[player.id] = await thread;
-          await thread.members.add(player.id);
+          memberThreads[member.id] = await thread;
+          await thread.members.add(member.id);
         }
         state = initGameState(members);
 				break;
@@ -141,15 +138,28 @@ client.on('interactionCreate', async interaction => {
           await interaction.reply({ content: `Invalid command; the current GamePhase is ${GamePhase} `, ephemeral: true });
           break;
 				}
-        const play = parsePlay(interaction.options.getString('cards'));
+        const play = playToCards(interaction.options.getString('cards'));
         // STEP 1: play card(s)
 
         if (play !== 'yield') {
-          if () { // PLAY VALIDATION: 
-            // check if all cards are from hand
-            // check same value rule
-            // animal companion rule (cannot be jester, 2 animals?)
+          if (!isValidCards(play)) {
+            break;
           }
+          // check if all cards are from hand
+          if (doCardsExistInHand(state, play)) { 
+            break;
+          }
+          // more than 1 card cases
+          
+          if (play.length > 1) {
+          // jester included?
+            if(play.map(stringifyCard).includes(jesterValue)) {
+              break;
+            }
+          // @TODO: check same value rule
+          // @TODO: animal companion rule 
+          }
+
           
           // STEP 2: suit power (reds)
 
@@ -204,10 +214,16 @@ client.on('interactionCreate', async interaction => {
           break;
 				}
         const discardCards = interaction.options.getString('cards');
-        if () { // DISCARD VALIDATION: cards are from hand
-          // check if discard value value is enough
-          // check if value excessive(?)
+        if (!isValidCards(discardCards)) {
+          break;
         }
+        const discardCards = playToCards(discardCards);
+        // check if all cards are from hand
+        if (doCardsExistInHand(state, discardCards)) { 
+          break;
+        }
+        // @TODO: check if discard value value is enough
+        // @TODO: check if value excessive(?)
         await interaction.reply('Discard!');
         // STEP 4:
         discard(state, discardCards);
@@ -289,27 +305,6 @@ for (const file of eventFiles) {
 	}
 }
 
-// client.once('ready', () => {
-// 	console.log('Ready!');
-// 	// let thread = bot.createThread("909847488725405750", 'test2');
-// 	// bot.addPlayerToThread(thread, '473249190965805068');
-// 	// console.log(`Ready! Logged in as ${client.user.tag}`);
-	
-// 	const channel = client.channels.fetch('909847488725405750').then(channel => console.log(channel.name)).catch(console.error);;
-// 	console.log(JSON.stringify(client));
-// 	console.log(channel);
-// 	channel.send('content');
-// });
-
-// const data = new SlashCommandBuilder()
-// 	.setName('echo')
-// 	.setDescription('Replies with your input!')
-// 	.addStringOption(option =>
-// 		option.setName('input')
-// 			.setDescription('The input to echo back')
-// 			.setRequired(true));
-
-// Login to Discord with your client's token
 client.login(token);
 
 function getNewState() {
@@ -332,6 +327,10 @@ function getNewState() {
     yieldCount: 0,
     isJesterPlayed: false,
   }
+}
+
+function getCurrentPlayerHand(state) {
+  return state.players[currPlayerIdx].hand;
 }
 
 function addPlayer(state, { displayName, id }) {
@@ -513,7 +512,33 @@ function getCardValues(cards) {
   return cards.reduce((sum, card) => sum + card.value, 0);
 }
 
-function parsePlay(input) {} // TODO
+function playToCards(input) {
+  const cards = [];
+  input.split(' ').forEach(c => {
+    c = c.toUpperCase();
+    if (c === jesterValue) {
+      cards.push({ value: jesterValue, suit: null});
+    } else {
+      cards.push({ value: c.slice(0, -1), suit: Suit[c.slice(-1)] });
+    }
+  })
+  return cards;
+}
+
+function isValidCards(input) {
+  if (input === jesterValue) {
+    return true;
+  }
+  let cards = input.toUpperCase().split(' ');
+  return cards.reduce((acc, card) => {
+    let suit = card.slice(-1);
+    let value = card.slice(0, -1);
+    return acc && (
+      (playerValues.includes(value) || royalValues.includes(value)) &&
+      (Object.values(Suit).includes(suit))
+    );
+  });
+}
 
 // print helpers:
 
@@ -525,6 +550,17 @@ function showHands(state) {
   state.players.forEach(player => {
     console.log(`${player.displayName}:`, player.hand.map(stringifyCard));
   });
+}
+
+function doCardsExistInHand(state, cards) {
+  const hand = getCurrentPlayerHand(state);
+  const handMap = {};
+  for (const card of hand) {
+    handMap[stringifyCard(card)] = 1;
+  }
+  return cards.reduce((acc, card) => 
+    acc && handMap.hasOwnProperty(stringifyCard(card))
+    , true);
 }
 
 // TODOS:
