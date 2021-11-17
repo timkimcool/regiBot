@@ -134,7 +134,7 @@ client.on('interactionCreate', async interaction => {
         for (const member of members) {
           // create thread;
           let thread = await channel.threads.create({
-            name: `${member.displayName}'s hand`,
+            name: `${member.displayName} hand`,
             autoArchiveDuration: 60,
             reason: 'Separate thread for your hand',
           });
@@ -142,6 +142,9 @@ client.on('interactionCreate', async interaction => {
           await thread.members.add(member.id);
         }
         state = initGameState(members);
+        for (let i = 0; i < members.length; i++) {
+          client.channels.cache.get(memberThreads[i]).send(state[players][i].hand);
+        }
 				break;
 			case 'play':
         if (curPhase !== GamePhase.WAITING_FOR_PLAY) {
@@ -238,13 +241,14 @@ client.on('interactionCreate', async interaction => {
           }
           await interaction.reply(`Waiting for Discard, value: ${royalAttackValue}`);
         }
+        client.channels.cache.get(memberThreads[state[currPlayerIdx]]).send(state[players][state[currPlayerIdx]].hand);
 				break;
       case 'jester':
         if (curPhase !== GamePhase.WAITING_FOR_JESTER) {
           await interaction.reply({ content: `Invalid command; the current GamePhase is ${curPhase} `, ephemeral: true });
           break;
         }
-        const displayName = interaction.options.getString('displayName');
+        const displayName = interaction.options.getString('display-name');
         if (!members.map(m => m.displayName).includes(displayName)) {
           await interaction.reply({ content: `The displayName you selected is not recognized: ${displayName}`, ephemeral: true });
           break;
@@ -257,22 +261,23 @@ client.on('interactionCreate', async interaction => {
 					await interaction.reply({ content: `Invalid command; the current GamePhase is ${curPhase} `, ephemeral: true });
           break;
 				}
-        const discardCards = interaction.options.getString('cards');
+        const discardCards = playToCards(interaction.options.getString('cards'));
         if (!isValidCards(discardCards)) {
           break;
         }
-        const discardCards = playToCards(discardCards);
         // check if all cards are from hand
         if (doCardsExistInHand(state, discardCards)) { 
           break;
         }
         // @TODO: check if discard value value is enough
         // @TODO: check if value excessive(?)
+        // @TODO: lose condition
         await interaction.reply('Discard!');
         // STEP 4:
         discard(state, discardCards);
         state.currPlayerIdx = [state.currPlayerIdx + 1] % state.players.length;
-				break;
+        client.channels.cache.get(memberThreads[state[currPlayerIdx]]).send(state[players][state[currPlayerIdx]].hand);
+        break;
 			case 'end-game':
 				await interaction.reply('End Game!');
 				break;
@@ -438,7 +443,7 @@ function dealCards(state, numCards = Number.POSITIVE_INFINITY) {
       player.hand.push(card);
       numCards--;
     }
-    dealIdx = (dealIdx + 1) % getNumPlayers(state);
+    dealIdx = (dealIdx + 1) % state.players.length;
   }
 }
 
@@ -544,7 +549,7 @@ function discard(state, cards) {
 function initGameState(members) {
   let state = getNewState();
   members.forEach(member => addPlayer(state, member));
-  state = setMetaStates(state);
+  setMetaStates(state);
   initDecks(state);
   dealCards(state);
   drawNewRoyal(state);
