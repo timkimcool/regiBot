@@ -42,6 +42,7 @@ const rest = new REST({ version: '9' }).setToken(token);
 	}
 })();
 
+// bot variables
 let members = [];
 let memberThreads = {};
 let channel = null;
@@ -50,9 +51,17 @@ const GamePhase = {
 	WAITING_FOR_JOIN: 'waiting for join',
 	WAITING_FOR_PLAY: 'waiting for play',
 	WAITING_FOR_DISCARD: 'waiting for discard',
+  WAITING_FOR_JESTER: 'waiting for jester',
 }
-
 let curPhase = GamePhase.IDLE;
+
+function resetBotState() {
+  members = [];
+  memberThreads = {};
+  channel = null;
+  // TODO: clean up channels
+  curPhase = GamePhase.IDLE;
+}
 
 // game variables
 const Suit = {
@@ -115,7 +124,7 @@ client.on('interactionCreate', async interaction => {
 				break;
 			case 'start':
 				if (curPhase !== GamePhase.WAITING_FOR_JOIN) {
-					await interaction.reply({ content: `Unable to start game because the GamePhase is ${GamePhase} `, ephemeral: true });
+					await interaction.reply({ content: `Unable to start game because the GamePhase is ${curPhase} `, ephemeral: true });
           break;
 				}
         if (members.length < 2) {
@@ -138,11 +147,17 @@ client.on('interactionCreate', async interaction => {
 				break;
 			case 'play':
         if (curPhase !== GamePhase.WAITING_FOR_PLAY) {
-          await interaction.reply({ content: `Invalid command; the current GamePhase is ${GamePhase} `, ephemeral: true });
+          await interaction.reply({ content: `Invalid command; the current GamePhase is ${curPhase} `, ephemeral: true });
           break;
 				}
         const play = parsePlay(interaction.options.getString('cards'));
         // STEP 1: play card(s)
+
+        if (play.length === 1 && play[0] === jesterValue) {
+          curPhase = GamePhase.WAITING_FOR_JESTER;
+          state.isJesterPlayed = true;
+          break;
+        }
 
         if (play !== 'yield') {
           if () { // PLAY VALIDATION: 
@@ -163,13 +178,12 @@ client.on('interactionCreate', async interaction => {
             dealCards(state, attackValue)
           }
 
-          // check if jester
-
           // STEP 3: deal damage
           const playerAttackValue = getCurrPlayerAttackValue(state);
           state.royal.health -= playerAttackValue;
           if (state.royal.health <= 0) {
             discardPlayerPlays(state);
+            state.isJesterPlayed = false;
             if (state.royal.health === 0) {
               state.tavernPile.unshift(state.royal.activeCard);
               // msg: juggernaut was moved to tavern pile
@@ -185,6 +199,7 @@ client.on('interactionCreate', async interaction => {
               drawNewRoyal(state);
             }
           } else {
+            // TODO: factor out as function
             // STEP 4 (START):
             curPhase = GamePhase.WAITING_FOR_DISCARD;
             const royalAttackValue = getRoyalAttackValue(state);
@@ -196,11 +211,39 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply(`Waiting for Discard, value: ${royalAttackValue}`);
           }
         } else { // yield
+          if (state.yieldCount === state.players.length - 1) {
+            await interaction.reply(`Players can no longer yield consecutively.`);
+            break;
+          }
+          state.yieldCount++;
+          // TODO: factor out as function
+          // STEP 4 (START):
+          curPhase = GamePhase.WAITING_FOR_DISCARD;
+          const royalAttackValue = getRoyalAttackValue(state);
+          // check if game lose (0 hp is valid to continue)
+          if (royalAttackValue > getCurrPlayerHealth(state)) {
+            await interaction.reply(`YOU LOSE attack: ${royalAttackValue}, health: ${getCurrPlayerHealth(state)}`);
+            break;
+          }
+          await interaction.reply(`Waiting for Discard, value: ${royalAttackValue}`);
         }
 				break;
+      case 'jester':
+        if (curPhase !== GamePhase.WAITING_FOR_JESTER) {
+          await interaction.reply({ content: `Invalid command; the current GamePhase is ${curPhase} `, ephemeral: true });
+          break;
+        }
+        const displayName = interaction.options.getString('displayName');
+        if (!members.map(m => m.displayName).includes(displayName)) {
+          await interaction.reply({ content: `The displayName you selected is not recognized: ${displayName}`, ephemeral: true });
+          break;
+        }
+        state.currPlayerIdx = state.players.findIndex(player => player.displayName === displayName);
+        curPhase = GamePhase.WAITING_FOR_PLAY;
+        break;
 			case 'discard':
 				if (curPhase !== GamePhase.WAITING_FOR_DISCARD) {
-					await interaction.reply({ content: `Invalid command; the current GamePhase is ${GamePhase} `, ephemeral: true });
+					await interaction.reply({ content: `Invalid command; the current GamePhase is ${curPhase} `, ephemeral: true });
           break;
 				}
         const discardCards = interaction.options.getString('cards');
@@ -223,7 +266,6 @@ client.on('interactionCreate', async interaction => {
 		await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
 	}
 });
-
 
 function botSendMessage() {}
 
