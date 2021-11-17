@@ -148,6 +148,7 @@ client.on('interactionCreate', async interaction => {
           await interaction.reply({ content: `Invalid command; the current GamePhase is ${curPhase} `, ephemeral: true });
           break;
 				}
+        await interaction.reply({ content: stringifyState(state) });
         const play = playToCards(interaction.options.getString('cards'));
         // STEP 1: play card(s)
 
@@ -250,6 +251,7 @@ client.on('interactionCreate', async interaction => {
           break;
         }
         state.currPlayerIdx = state.players.findIndex(player => player.displayName === displayName);
+        await interaction.reply({ content: `It is ${state.players[state.currPlayerIdx].displayName}'s turn` });
         curPhase = GamePhase.WAITING_FOR_PLAY;
         break;
 			case 'discard':
@@ -271,7 +273,10 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply('Discard!');
         // STEP 4:
         discard(state, discardCards);
+        await interaction.reply({ content: stringifyState(state) });
         state.currPlayerIdx = [state.currPlayerIdx + 1] % state.players.length;
+        await interaction.reply({ content: `It is ${state.players[state.currPlayerIdx].displayName}'s turn` });
+        curPhase = GamePhase.WAITING_FOR_PLAY;
 				break;
 			case 'end-game':
 				await interaction.reply('End Game!');
@@ -604,6 +609,22 @@ function doCardsExistInHand(state, cards) {
   return cards.reduce((acc, card) => 
     acc && handMap.hasOwnProperty(stringifyCard(card))
     , true);
+
+function stringifyState(state) {
+  const deckStr = `Discard Pile count: ${state.discardPile.length}`
+    + `\nCastle Deck count: ${state.castleDeck.length}`;
+    + `\nTavern Deck count: ${state.teavernDeck.length}`;
+  const royalStr = `\nRoyal Card: ${stringifyCard(state.royal.activeCard)}`
+    + `\nRoyal Attack: ${getRoyalAttackValue(state)}`
+    + `\nRoyal Health: ${state.royal.health}`;
+  let playersStr = '';
+  for (const player of state.players) {
+    const strPlays = player.plays.map(play => play.map(stringifyCard));
+    const playerStr = `\n${player.displayName} has ${player.hand.length} cards in hand.`
+      + `\nCards in play: ${strPlays}`;
+    playersStr += playerStr;
+  }
+  return deckStr + royalStr + playersStr;
 }
 
 // TODOS:
