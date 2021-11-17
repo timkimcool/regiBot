@@ -142,13 +142,13 @@ client.on('interactionCreate', async interaction => {
           await thread.members.add(member.id);
         }
         state = initGameState(members);
+        await interaction.reply({ content: stringifyState(state) });
 				break;
 			case 'play':
         if (curPhase !== GamePhase.WAITING_FOR_PLAY) {
           await interaction.reply({ content: `Invalid command; the current GamePhase is ${curPhase} `, ephemeral: true });
           break;
 				}
-        await interaction.reply({ content: stringifyState(state) });
         const play = playToCards(interaction.options.getString('cards'));
         // STEP 1: play card(s)
 
@@ -239,6 +239,7 @@ client.on('interactionCreate', async interaction => {
           }
           await interaction.reply(`Waiting for Discard, value: ${royalAttackValue}`);
         }
+        await interaction.reply({ content: stringifyState(state) });
 				break;
       case 'jester':
         if (curPhase !== GamePhase.WAITING_FOR_JESTER) {
