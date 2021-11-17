@@ -88,7 +88,7 @@ client.on('interactionCreate', async interaction => {
 		console.log(interaction.commandName);
 		switch (interaction.commandName) {
 			case 'ping':
-				await interaction.reply('Pong!');
+				channel.send.reply('Pong!');
 				break;
 			case 'new-game':
 				if (curPhase !== GamePhase.IDLE) {
@@ -96,7 +96,7 @@ client.on('interactionCreate', async interaction => {
           break;
 				}
         curPhase = GamePhase.WAITING_FOR_JOIN;
-        await interaction.reply('New Game! Type "/join" to join the game');
+        channel.send('New Game! Type "/join" to join the game');
 				break;
 			case 'join':
 				if (curPhase !== GamePhase.WAITING_FOR_JOIN) {
@@ -118,7 +118,7 @@ client.on('interactionCreate', async interaction => {
         for (const member of members) {
           currentPlayers += '\n' + member.displayName;
         }
-        await interaction.reply(`${member.displayName} joined the game!`);
+        channel.send(`${member.displayName} joined the game!`);
 				break;
 			case 'start':
 				if (curPhase !== GamePhase.WAITING_FOR_JOIN) {
@@ -126,11 +126,11 @@ client.on('interactionCreate', async interaction => {
           break;
 				}
         if (members.length < 2) {
-					await interaction.reply({ content: `Not enough players to start the game.`});
+					channel.send(`Not enough players to start the game.`);
           break;
         }
         curPhase = GamePhase.WAITING_FOR_PLAY;
-        await interaction.reply('Start!');
+        channel.send('Start!');
         for (const member of members) {
           // create thread;
           let thread = await channel.threads.create({
@@ -142,7 +142,7 @@ client.on('interactionCreate', async interaction => {
           await thread.members.add(member.id);
         }
         state = initGameState(members);
-        await interaction.reply({ content: stringifyState(state) });
+        channel.send(stringifyState(state));
 				break;
 			case 'play':
         if (curPhase !== GamePhase.WAITING_FOR_PLAY) {
@@ -206,7 +206,7 @@ client.on('interactionCreate', async interaction => {
             state.royal.health = null;
             if (state.castleDeck.length === 0) {
               curPhase = GamePhase.IDLE;
-              await interaction.reply('YOU WON LOL');
+              channel.send('YOU WON LOL');
             } else {
               drawNewRoyal(state);
             }
@@ -217,14 +217,14 @@ client.on('interactionCreate', async interaction => {
             const royalAttackValue = getRoyalAttackValue(state);
             // check if game lose (0 hp is valid to continue)
             if (royalAttackValue > getCurrPlayerHealth(state)) {
-              await interaction.reply(`YOU LOSE attack: ${royalAttackValue}, health: ${getCurrPlayerHealth(state)}`);
+              channel.send(`YOU LOSE attack: ${royalAttackValue}, health: ${getCurrPlayerHealth(state)}`);
               break;
             }
-            await interaction.reply(`Waiting for Discard, value: ${royalAttackValue}`);
+            channel.send(`Waiting for Discard, value: ${royalAttackValue}`);
           }
         } else { // yield
           if (state.yieldCount === state.players.length - 1) {
-            await interaction.reply(`Players can no longer yield consecutively.`);
+            channel.send(`Players can no longer yield consecutively.`);
             break;
           }
           state.yieldCount++;
@@ -234,12 +234,12 @@ client.on('interactionCreate', async interaction => {
           const royalAttackValue = getRoyalAttackValue(state);
           // check if game lose (0 hp is valid to continue)
           if (royalAttackValue > getCurrPlayerHealth(state)) {
-            await interaction.reply(`YOU LOSE attack: ${royalAttackValue}, health: ${getCurrPlayerHealth(state)}`);
+            channel.send(`YOU LOSE attack: ${royalAttackValue}, health: ${getCurrPlayerHealth(state)}`);
             break;
           }
-          await interaction.reply(`Waiting for Discard, value: ${royalAttackValue}`);
+          channel.send(`Waiting for Discard, value: ${royalAttackValue}`);
         }
-        await interaction.reply({ content: stringifyState(state) });
+        channel.send({ content: stringifyState(state) });
 				break;
       case 'jester':
         if (curPhase !== GamePhase.WAITING_FOR_JESTER) {
@@ -252,7 +252,7 @@ client.on('interactionCreate', async interaction => {
           break;
         }
         state.currPlayerIdx = state.players.findIndex(player => player.displayName === displayName);
-        await interaction.reply({ content: `It is ${state.players[state.currPlayerIdx].displayName}'s turn` });
+        channel.send({ content: `It is ${state.players[state.currPlayerIdx].displayName}'s turn` });
         curPhase = GamePhase.WAITING_FOR_PLAY;
         break;
 			case 'discard':
@@ -271,16 +271,16 @@ client.on('interactionCreate', async interaction => {
         }
         // @TODO: check if discard value value is enough
         // @TODO: check if value excessive(?)
-        await interaction.reply('Discard!');
+        channel.send('Discard!');
         // STEP 4:
         discard(state, discardCards);
-        await interaction.reply({ content: stringifyState(state) });
+        channel.send({ content: stringifyState(state) });
         state.currPlayerIdx = [state.currPlayerIdx + 1] % state.players.length;
-        await interaction.reply({ content: `It is ${state.players[state.currPlayerIdx].displayName}'s turn` });
+        channel.send({ content: `It is ${state.players[state.currPlayerIdx].displayName}'s turn` });
         curPhase = GamePhase.WAITING_FOR_PLAY;
 				break;
 			case 'end-game':
-				await interaction.reply('End Game!');
+				channel.send('End Game!');
 				break;
 		}
 		// await command.execute(interaction);
