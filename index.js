@@ -96,8 +96,8 @@ client.on('interactionCreate', async interaction => {
           break;
 				}
         curPhase = GamePhase.WAITING_FOR_JOIN;
-        channel.send('New Game! Type "/join" to join the game');
         channel = interaction.channel;
+        channel.send('New Game! Type "/join" to join the game');
 				break;
 			case 'join':
 				if (curPhase !== GamePhase.WAITING_FOR_JOIN) {
@@ -145,7 +145,7 @@ client.on('interactionCreate', async interaction => {
         channel.send(stringifyState(state));
         for (let i = 0; i < members.length; i++) {
           let thread = memberThreads[Object.keys(memberThreads)[i]];
-          thread.send(state.players[i].hand);
+          thread.send(JSON.stringify(state.players[i].hand.map(stringifyCard)));
         }
 				break;
 			case 'play':  
@@ -620,8 +620,8 @@ function doCardsExistInHand(state, cards) {
 
 function stringifyState(state) {
   const deckStr = `Discard Pile count: ${state.discardPile.length}`
-    + `\nCastle Deck count: ${state.castleDeck.length}`;
-    + `\nTavern Deck count: ${state.teavernDeck.length}`;
+    + `\nCastle Deck count: ${state.castleDeck.length}`
+    + `\nTavern Deck count: ${state.tavernDeck.length}`;
   const royalStr = `\nRoyal Card: ${stringifyCard(state.royal.activeCard)}`
     + `\nRoyal Attack: ${getRoyalAttackValue(state)}`
     + `\nRoyal Health: ${state.royal.health}`;
