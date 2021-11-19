@@ -1,9 +1,9 @@
 // game variables
 const Suit = {
-  CLUB: 'C',
-  SPADE: 'S',
-  HEART: 'H',
-  DIAMOND: 'D',
+  CLUB: 'C', //'♧',
+  SPADE: 'S', //'♤',
+  HEART: 'H', //'♡',
+  DIAMOND: 'D', //'♢',
 };
 const playerValues = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 const royalValues = ['J', 'Q', 'K'];
@@ -37,7 +37,7 @@ function getNewState() {
   }
 }
 
-function getCurrentPlayerHand(state) {
+function getCurrPlayerHand(state) {
   return state.players[state.currPlayerIdx].hand;
 }
 
@@ -163,6 +163,10 @@ function discardPlayerPlays(state) {
 function makePlay(state, cards) {
   const player = state.players[state.currPlayerIdx];
   player.plays.push(cards);
+  cards.map(stringifyCard).forEach(cardStr => {
+    const idx = player.hand.findIndex(card => stringifyCard(card) === cardStr);
+    player.hand.splice(idx, 1);
+  });
 }
 
 function healFromDiscardPile(state, numCards) {
@@ -223,61 +227,76 @@ function getCardValues(cards) {
 
 function parseCards(input) {
   const cards = [];
-  input.split(' ').forEach(c => {
-    c = c.toUpperCase();
-    if (c === jesterValue) {
-      cards.push({ value: jesterValue, suit: null});
+  input.split(' ').forEach(rawCard => {
+    rawCard = rawCard.toUpperCase();
+    if (rawCard === jesterValue) {
+      cards.push({ value: jesterValue, suit: null });
     } else {
-      cards.push({ value: c.slice(0, -1), suit: Suit[c.slice(-1)] });
+      cards.push({ value: rawCard.slice(0, -1), suit: rawCard.slice(-1) });
     }
   })
   return cards;
 }
 
-function areValidCards(input) {
-  if (input === jesterValue) {
-    return true;
+function isValidInput(input) {
+  if (input === null) return false;
+  if ([jesterValue, 'yield'].includes(input)) return true;
+  let rawCards = input.split(' ');
+  return rawCards.reduce((acc, rawCard) => {
+    const value = rawCard.slice(0, -1);
+    const suit = rawCard.slice(-1);
+    return acc
+      && (
+        (playerValues.includes(value) || royalValues.includes(value))
+        && (Object.values(Suit).includes(suit))
+      );
+  }, true);
+}
+
+function isValidPlay(cards) {
+  const cardValues = cards.map(card => card.value);
+  if (cardValues.includes(jesterValue)) {
+    return cards.length === 1;
   }
-  let cards = input.toUpperCase().split(' ');
-  return cards.reduce((acc, card) => {
-    let suit = card.slice(-1);
-    let value = card.slice(0, -1);
-    return acc && (
-      (playerValues.includes(value) || royalValues.includes(value)) &&
-      (Object.values(Suit).includes(suit))
-    );
-  });
+  if (cards.length > 1) {
+    if (cardValues.includes('A')) {
+      return cards.length === 2;
+    }
+    return cardValues.every((val, _, vals) => val === vals[0])
+      && (cardValues.reduce((sum, val) => sum + attackValueMap[val], 0) <= 10);
+  }
+  return true;
 }
 
 function doCardsExistInHand(gameState, cards) {
-  const hand = getCurrentPlayerHand(gameState);
-  const handMap = {};
-  for (const card of hand) {
-    handMap[stringifyCard(card)] = 1;
-  }
+  const hand = getCurrPlayerHand(gameState).map(stringifyCard);
   return cards.reduce((acc, card) => (
-    acc && handMap.hasOwnProperty(stringifyCard(card))
+    acc && hand.includes(stringifyCard(card))
   ), true);
+}
+
+function getCurrentPlayerName(gameState) {
+  return gameState.players[gameState.currPlayerIdx].displayName;
 }
 
 // print helpers:
 
 function stringifyCard(card) {
-  return card.value + (card.suit ? `|${card.suit}` : '');
+  return card.value + (card.suit ? `${card.suit}` : '');
 }
 
 function stringifyState(state) {
-  const deckStr = `Discard Pile count: ${state.discardPile.length}`
-    + `\nCastle Deck count: ${state.castleDeck.length}`;
-    + `\nTavern Deck count: ${state.teavernDeck.length}`;
-  const royalStr = `\nRoyal Card: ${stringifyCard(state.royal.activeCard)}`
+  const deckStr = `[Discard Pile: ${state.discardPile.length}]`
+    + ` [Castle Deck: ${state.castleDeck.length}]`
+    + ` [Tavern Deck: ${state.tavernDeck.length}]`;
+  const royalStr = `\n\nRoyal Card: ${stringifyCard(state.royal.activeCard)}`
     + `\nRoyal Attack: ${getRoyalAttackValue(state)}`
     + `\nRoyal Health: ${state.royal.health}`;
   let playersStr = '';
   for (const player of state.players) {
     const strPlays = player.plays.map(play => play.map(stringifyCard)).join(' ');
-    const playerStr = `\n${player.displayName} has ${player.hand.length} cards in hand.`
-      + `\nCards in play: ${strPlays === '' ? 'None' : strPlays}`;
+    const playerStr = `\n\n- ${player.displayName} has ${player.hand.length} cards in hand,`
+      + `\nwith cards in play: ${strPlays === '' ? 'None' : strPlays}`;
     playersStr += playerStr;
   }
   return deckStr + royalStr + playersStr;
@@ -290,7 +309,10 @@ function showHands(state) {
 }
 
 module.exports = {
+  Suit,
   jesterValue,
+  attackValueMap,
+  getCurrPlayerHand,
   addPlayer,
   dealCards,
   drawNewRoyal,
@@ -304,8 +326,10 @@ module.exports = {
   discard,
   initState,
   parseCards,
-  areValidCards,
+  isValidInput,
+  isValidPlay,
   doCardsExistInHand,
+  getCurrentPlayerName,
   stringifyCard,
   stringifyState,
 }
