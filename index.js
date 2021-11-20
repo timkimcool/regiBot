@@ -56,10 +56,14 @@ const BotPhase = {
 }
 let currBotPhase = BotPhase.IDLE;
 let gameState = null;
+const privacyStr = '-------------------------------------------------------------\n';
 
 function resetBotState() {
+  for (let i = 0; i < members.length; i++) {
+    memberThreads[i].members.remove(members[i].id);
+    memberThreads[i].leave();
+  }
   members = [];
-  memberThreads.forEach(thread => thread.leave());
   memberThreads = [];
   currBotPhase = BotPhase.IDLE;
   gameState = null;
@@ -72,7 +76,7 @@ client.on('interactionCreate', async interaction => {
 	try {
 		switch (interaction.commandName) {
 			case 'ping': {
-				channel.send.reply('Pong!');
+				channel.send('**[Pong]**');
 				break;
       }
 			case 'new-game': {
@@ -81,7 +85,7 @@ client.on('interactionCreate', async interaction => {
           break;
 				}
         currBotPhase = BotPhase.WAITING_FOR_JOIN;
-        channel.send('New Game! Type "/join" to join the game');
+        channel.send('**[New Game: /join to enter the game]**');
 				break;
       }
 			case 'join': {
@@ -99,7 +103,7 @@ client.on('interactionCreate', async interaction => {
         //   break;
         // }
         members.push(member);
-        channel.send(`${member.displayName} joined the game!`);
+        channel.send(`**[${member.displayName} has joined the game]**`);
 				break;
       }
 			case 'start': {
@@ -108,7 +112,7 @@ client.on('interactionCreate', async interaction => {
           break;
 				}
         if (members.length < 2) {
-					channel.send(`Not enough players to start the game.`);
+					channel.send(`**[Not enough players to start the game]**`);
           break;
         }
         for (const member of members) {
@@ -119,17 +123,15 @@ client.on('interactionCreate', async interaction => {
           });
           memberThreads.push(await thread);
           await thread.members.add(member.id);
+          await thread.setArchived();
         }
         gameState = Game.initState(members);
+        currBotPhase = BotPhase.WAITING_FOR_PLAY;
         channel.send(Game.stringifyState(gameState));
         for (let i = 0; i < members.length; i++) {
-          const thread = memberThreads[i];
-          const privacyStr = '-------------------------------------------------------------\n';
           const handStr = gameState.players[i].hand.map(Game.stringifyCard).join(' ');
-          thread.send(privacyStr + handStr);
+          memberThreads[i].send(privacyStr + handStr);
         }
-        currBotPhase = BotPhase.WAITING_FOR_PLAY;
-        channel.send(`---> It is ${Game.getCurrentPlayerName(gameState)}'s turn!`);
 				break;
       }
 			case 'play': { 
@@ -148,7 +150,7 @@ client.on('interactionCreate', async interaction => {
         }
         if (input === 'yield') {
           if (gameState.yieldCount === gameState.players.length - 1) {
-            channel.send(`Players can no longer yield consecutively.`);
+            channel.send(`**[Players can no longer yield consecutively]**`);
             break;
           }
           gameState.yieldCount++;
@@ -163,21 +165,32 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: `The play you have made is invalid.`, ephemeral: true });
             break;
           }
+          gameState.yieldCount = 0;
           if (play.length === 1 && play[0] === Game.jesterValue) {
             gameState.isJesterPlayed = true;
             currBotPhase = BotPhase.WAITING_FOR_JESTER;
-            channel.send(`Choose whose turn it is next (/jester).`);
+            channel.send(Game.stringifyState(gameState));
+            channel.send(`**[/jester to select whose turn it is next]**`);
+            const handStr = Game.getCurrPlayerHand(gameState).map(Game.stringifyCard).join(' ');
+            memberThreads[gameState.currPlayerIdx].send(privacyStr + handStr);
             break;
           }
           Game.makePlay(gameState, play);
+          const handStr = Game.getCurrPlayerHand(gameState).map(Game.stringifyCard).join(' ');
+          memberThreads[gameState.currPlayerIdx].send(privacyStr + handStr);
           // STEP 2: suit power (reds)
           const activeSuits = Game.getCurrPlayerActiveSuits(gameState);
           const attackValue = Game.getCurrPlayerAttackValue(gameState);
           if (activeSuits.includes(Game.Suit.HEART)) {
             Game.healFromDiscardPile(gameState, attackValue);
           }
-          if (activeSuits.includes(Game.Suit.Diamond)) {
-            Game.dealCards(gameState, attackValue)
+          if (activeSuits.includes(Game.Suit.DIAMOND)) {
+            Game.dealCards(gameState, attackValue);
+            // TODO: don't send to player who has no change in hand.
+            for (let i = 0; i < members.length; i++) {
+              const handStr = gameState.players[i].hand.map(Game.stringifyCard).join(' ');
+              memberThreads[i].send(privacyStr + handStr);
+            }
           }
           // STEP 3: deal damage
           const playerAttackValue = Game.getCurrPlayerAttackValue(gameState);
@@ -186,17 +199,16 @@ client.on('interactionCreate', async interaction => {
             Game.discardPlayerPlays(gameState);
             gameState.isJesterPlayed = false;
             if (gameState.royal.health === 0) {
-              gameState.tavernPile.unshift(gameState.royal.activeCard);
-              // msg: juggernaut was moved to tavern pile
+              gameState.tavernDeck.unshift(gameState.royal.activeCard);
+              channel.send(`**[${Game.stringifyCard(gameState.royal.activeCard)} has been moved to the Tavern Deck]**`);
             } else {
               gameState.discardPile.push(gameState.royal.activeCard);
             }
             gameState.royal.activeCard = null;
             gameState.royal.health = null;
             if (gameState.castleDeck.length === 0) {
-              currBotPhase = BotPhase.IDLE;
-              channel.send('YOU GUYS WON, GJ LOL');
               resetBotState();
+              channel.send('**[You have won Regicide]**');
               break;
             } else {
               Game.drawNewRoyal(gameState);
@@ -209,23 +221,23 @@ client.on('interactionCreate', async interaction => {
         const royalAttackValue = Game.getRoyalAttackValue(gameState);
         if (royalAttackValue === 0) {
           gameState.currPlayerIdx = [gameState.currPlayerIdx + 1] % gameState.players.length;
-          const privacyStr = '-------------------------------------------------------------\n';
-          const handStr = Game.getCurrPlayerHand(gameState).map(Game.stringifyCard).join(' ');
-          memberThreads[gameState.currPlayerIdx].send(privacyStr + handStr);
+          if (Game.getCurrPlayerHand(gameState).length === 0) {
+            channel.send(Game.stringifyState(gameState));
+            channel.send(`**[You lost: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
+            resetBotState();
+            break;
+          }
           channel.send(Game.stringifyState(gameState));
-          channel.send(`---> It is ${Game.getCurrentPlayerName(gameState)}'s turn!`);
+          break;
         }
         if (royalAttackValue > Game.getCurrPlayerHealth(gameState)) {
-          channel.send(`YOU LOSE (attack: ${royalAttackValue}, health: ${Game.getCurrPlayerHealth(gameState)})`);
           resetBotState();
+          channel.send(`**[You lost: attack: ${royalAttackValue}, health remaining: ${Game.getCurrPlayerHealth(gameState)}]**`);
           break;
         }
         currBotPhase = BotPhase.WAITING_FOR_DISCARD;
         channel.send(Game.stringifyState(gameState));
-        channel.send(`Waiting for (/discard) against value: ${royalAttackValue}`);
-        const privacyStr = '-------------------------------------------------------------\n';
-        const handStr = Game.getCurrPlayerHand(gameState).map(Game.stringifyCard).join(' ');
-        memberThreads[gameState.currPlayerIdx].send(privacyStr + handStr);
+        channel.send(`**[Waiting for /discard against attack: ${royalAttackValue}]**`);
 				break;
       }
       case 'jester': {
@@ -239,12 +251,18 @@ client.on('interactionCreate', async interaction => {
         }
         const displayName = interaction.options.getString('display-name');
         if (!members.map(m => m.displayName).includes(displayName)) {
-          await interaction.reply({ content: `The displayName you selected is not recognized: ${displayName}`, ephemeral: true });
+          await interaction.reply({ content: `The player you selected is not recognized: ${displayName}`, ephemeral: true });
           break;
         }
         gameState.currPlayerIdx = gameState.players.findIndex(player => player.displayName === displayName);
-        channel.send(`---> It is ${Game.getCurrentPlayerName(gameState)}'s turn!`);
+        if (Game.getCurrPlayerHand(gameState).length === 0) {
+          channel.send(Game.stringifyState(gameState));
+          channel.send(`**[You lost: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
+          resetBotState();
+          break;
+        }
         currBotPhase = BotPhase.WAITING_FOR_PLAY;
+        channel.send(Game.stringifyState(gameState));
         break;
       }
 			case 'discard': {
@@ -277,18 +295,22 @@ client.on('interactionCreate', async interaction => {
           break;
         }
         Game.discard(gameState, discardCards);
-        channel.send(`${Game.getCurrentPlayerName(gameState)} discarded: ${discardCards.map(Game.stringifyCard).join(', ')}`);
-        gameState.currPlayerIdx = [gameState.currPlayerIdx + 1] % gameState.players.length;
-        const privacyStr = '-------------------------------------------------------------\n';
+        channel.send(`**[${Game.getCurrentPlayerName(gameState)} discarded: ${discardCards.map(Game.stringifyCard).join(', ')}]**`);
         const handStr = Game.getCurrPlayerHand(gameState).map(Game.stringifyCard).join(' ');
         memberThreads[gameState.currPlayerIdx].send(privacyStr + handStr);
+        gameState.currPlayerIdx = [gameState.currPlayerIdx + 1] % gameState.players.length;
+        if (Game.getCurrPlayerHand(gameState).length === 0) {
+          channel.send(Game.stringifyState(gameState));
+          channel.send(`**[You lost: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
+          resetBotState();
+          break;
+        }
         currBotPhase = BotPhase.WAITING_FOR_PLAY;
         channel.send(Game.stringifyState(gameState));
-        channel.send(`---> It is ${Game.getCurrentPlayerName(gameState)}'s turn!`);
         break;
       }
 			case 'end-game': {
-				channel.send('Game has ended!');
+				channel.send('**[Game has ended]**');
         resetBotState();
 				break;
       }

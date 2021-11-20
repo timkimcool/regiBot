@@ -293,10 +293,13 @@ function stringifyState(state) {
     + `\nRoyal Attack: ${getRoyalAttackValue(state)}`
     + `\nRoyal Health: ${state.royal.health}`;
   let playersStr = '';
-  for (const player of state.players) {
-    const strPlays = player.plays.map(play => play.map(stringifyCard)).join(' ');
-    const playerStr = `\n\n- ${player.displayName} has ${player.hand.length} cards in hand,`
-      + `\nwith cards in play: ${strPlays === '' ? 'None' : strPlays}`;
+  for (let i = 0; i < state.players.length; i++) {
+    const player = state.players[i];
+    const playsStr = player.plays.map(play => play.map(stringifyCard)).join(' ');
+    const turnStr = i === state.currPlayerIdx ? '🗹' : '☐';
+    const playerStr = `\n\n${turnStr} ${player.displayName}`
+      + `\ncards in play: ${playsStr === '' ? '(none)' : playsStr}`
+      + `\ncards in hand: ${player.hand.length}`;
     playersStr += playerStr;
   }
   return deckStr + royalStr + playersStr;
