@@ -182,7 +182,7 @@ function getRoyalAttackValue(state) {
   const rawValue = attackValueMap[state.royal.activeCard.value];
   if (state.isJesterPlayed) return rawValue;
   const shieldValue = getAllCardsInPlay(state).reduce((sum, card) => (
-    sum + (card.suit === Suit.SPADE ? card.value : 0)
+    sum + (card.suit === Suit.SPADE ? attackValueMap[card.value] : 0)
   ), 0)
   const updatedValue = rawValue - shieldValue;
   return updatedValue < 0 ? 0 : updatedValue;
