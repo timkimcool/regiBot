@@ -153,6 +153,7 @@ client.on('interactionCreate', async interaction => {
             channel.send(`**[Players can no longer yield consecutively]**`);
             break;
           }
+          channel.send(`**[${Game.getCurrentPlayerName(gameState)} yielded]**`);
           gameState.yieldCount++;
         } else { // regular play
           const play = Game.parseCards(input);
@@ -176,6 +177,7 @@ client.on('interactionCreate', async interaction => {
             break;
           }
           Game.makePlay(gameState, play);
+          channel.send(`**[${Game.getCurrentPlayerName(gameState)} played: ${play.map(Game.stringifyCard).join(', ')}]**`);
           const handStr = Game.getCurrPlayerHand(gameState).map(Game.stringifyCard).join(' ');
           memberThreads[gameState.currPlayerIdx].send(privacyStr + handStr);
           // STEP 2: suit power (reds)
