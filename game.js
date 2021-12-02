@@ -5,7 +5,7 @@ const Suit = {
   HEART: 'H',
   DIAMOND: 'D',
 };
-const symbolMap =  {
+const symbolMap = {
   C: '♧',
   S: '♤',
   H: '♡',
