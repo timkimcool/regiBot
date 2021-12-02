@@ -1,5 +1,5 @@
 const { REST } = require('@discordjs/rest');
-const { Client, Collection, Intents } = require('discord.js');
+const { Client, Collection, Intents, MessageAttachment } = require('discord.js');
 const { Routes } = require('discord-api-types/v9');
 
 const fs = require('fs');
@@ -78,7 +78,9 @@ client.on('interactionCreate', async interaction => {
 		switch (interaction.commandName) {
 			case 'ping': {
 				await channel.send('**[Pong]**');
-        await interaction.reply('test!');
+        // const file = new MessageAttachment('../regibot/images/JD.png');
+        // await channel.send({ embeds: [{title: 'test', image: { url: 'attachment://regibot/images/JD.png'}}], files: [file] });
+        await interaction.reply('loading!');
         await interaction.deleteReply();
 				break;
       }
@@ -89,7 +91,7 @@ client.on('interactionCreate', async interaction => {
 				}
         currBotPhase = BotPhase.WAITING_FOR_JOIN;
         await channel.send('**[New Game: /join to enter the game]**');
-        await interaction.reply('test!');
+        await interaction.reply('loading!');
         await interaction.deleteReply();
 				break;
       }
@@ -109,7 +111,7 @@ client.on('interactionCreate', async interaction => {
         // }
         members.push(member);
         channel.send(`**[${member.displayName} has joined the game]**`);
-        await interaction.reply('test!');
+        await interaction.reply('loading!');
         await interaction.deleteReply();
 				break;
       }
@@ -134,12 +136,12 @@ client.on('interactionCreate', async interaction => {
         }
         gameState = Game.initState(members);
         currBotPhase = BotPhase.WAITING_FOR_PLAY;
-        channel.send(Game.stringifyState(gameState));
+        channel.send(Game.embedState(gameState));
         for (let i = 0; i < members.length; i++) {
           const handStr = gameState.players[i].hand.map(Game.stringifyCard).join(' ');
           memberThreads[i].send(privacyStr + (handStr ? handStr : '(empty)'));
         }
-        await interaction.reply('test!');
+        await interaction.reply('loading!');
         await interaction.deleteReply();
 				break;
       }
@@ -159,7 +161,7 @@ client.on('interactionCreate', async interaction => {
         }
         if (input === 'yield') {
           if (gameState.yieldCount === gameState.players.length - 1) {
-            channel.send(`**[Players can no longer yield consecutively]**`);
+            await interaction.reply({ content: `All players cannot yield consecutively`, ephemeral: true });
             break;
           }
           channel.send(`**[${Game.getCurrPlayerName(gameState)} yielded]**`);
@@ -183,8 +185,10 @@ client.on('interactionCreate', async interaction => {
           if (play.length === 1 && play[0].value === Game.jesterValue) {
             gameState.isJesterPlayed = true;
             currBotPhase = BotPhase.WAITING_FOR_JESTER;
-            channel.send(Game.stringifyState(gameState));
+            channel.send(Game.embedState(gameState));
             channel.send(`**[/jester to select whose turn it is next]**`);
+            await interaction.reply('loading!');
+            await interaction.deleteReply();
             break;
           }
           // STEP 2: suit power (reds)
@@ -212,17 +216,20 @@ client.on('interactionCreate', async interaction => {
               channel.send(`**[${Game.stringifyCard(gameState.royal.activeCard)} has been moved to the Tavern Deck]**`);
             } else {
               gameState.discardPile.push(gameState.royal.activeCard);
-              channel.send(`**[${Game.stringifyCard(gameState.royal.activeCard)} has been moved to the Discard Pile]**`);
             }
             gameState.royal.activeCard = null;
             gameState.royal.health = null;
             if (gameState.castleDeck.length === 0) {
               channel.send('**[You won Regicide]**');
               resetBotState();
+              await interaction.reply('loading!');
+              await interaction.deleteReply();
               break;
             } else {
               Game.drawNewRoyal(gameState);
-              channel.send(Game.stringifyState(gameState));
+              channel.send(Game.embedState(gameState));
+              await interaction.reply('loading!');
+              await interaction.deleteReply();
               break;
             }
           }
@@ -232,12 +239,12 @@ client.on('interactionCreate', async interaction => {
         if (royalAttackValue === 0) {
           gameState.currPlayerIdx = [gameState.currPlayerIdx + 1] % gameState.players.length;
           if (Game.getCurrPlayerHand(gameState).length === 0) {
-            channel.send(Game.stringifyState(gameState));
+            channel.send(Game.embedState(gameState));
             channel.send(`**[Game Over: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
             resetBotState();
             break;
           }
-          channel.send(Game.stringifyState(gameState));
+          channel.send(Game.embedState(gameState));
           break;
         }
         if (royalAttackValue > Game.getCurrPlayerHealth(gameState)) {
@@ -246,7 +253,7 @@ client.on('interactionCreate', async interaction => {
           break;
         }
         currBotPhase = BotPhase.WAITING_FOR_DISCARD;
-        channel.send(Game.stringifyState(gameState));
+        channel.send(Game.embedState(gameState));
         channel.send(`**[Waiting for /discard against attack: ${royalAttackValue}]**`);
         await interaction.reply('test!');
         await interaction.deleteReply();
@@ -269,13 +276,13 @@ client.on('interactionCreate', async interaction => {
         channel.send(`**[${gameState.players[gameState.currPlayerIdx].displayName} selected ${displayName}]**`);
         gameState.currPlayerIdx = gameState.players.findIndex(player => player.displayName === displayName);
         if (Game.getCurrPlayerHand(gameState).length === 0) {
-          channel.send(Game.stringifyState(gameState));
+          channel.send(Game.embedState(gameState));
           channel.send(`**[Game Over: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
           resetBotState();
           break;
         }
         currBotPhase = BotPhase.WAITING_FOR_PLAY;
-        channel.send(Game.stringifyState(gameState));
+        channel.send(Game.embedState(gameState));
         await interaction.reply('test!');
         await interaction.deleteReply();
         break;
@@ -315,13 +322,15 @@ client.on('interactionCreate', async interaction => {
         memberThreads[gameState.currPlayerIdx].send(privacyStr + (handStr ? handStr : '(empty)'));
         gameState.currPlayerIdx = [gameState.currPlayerIdx + 1] % gameState.players.length;
         if (Game.getCurrPlayerHand(gameState).length === 0) {
-          channel.send(Game.stringifyState(gameState));
+          channel.send(Game.embedState(gameState));
           channel.send(`**[Game Over: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
           resetBotState();
+          await interaction.reply('loading!');
+          await interaction.deleteReply();
           break;
         }
         currBotPhase = BotPhase.WAITING_FOR_PLAY;
-        channel.send(Game.stringifyState(gameState));
+        channel.send(Game.embedState(gameState));
         await interaction.reply('test!');
         await interaction.deleteReply();
         break;
@@ -329,6 +338,8 @@ client.on('interactionCreate', async interaction => {
 			case 'end-game': {
 				channel.send('**[Game has ended]**');
         resetBotState();
+        await interaction.reply('loading!');
+        await interaction.deleteReply();
 				break;
       }
 		}
@@ -340,57 +351,3 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(token);
-
-// function botSendMessage() {}
-
-// function botSendEmbedMessage(channel, msg) {
-// 	const exampleEmbed = {
-// 		color: 0x0099ff,
-// 		title: 'Some title',
-// 		url: 'https://discord.js.org',
-// 		author: {
-// 			name: 'Some name',
-// 			icon_url: 'https://i.imgur.com/AfFp7pu.png',
-// 			url: 'https://discord.js.org',
-// 		},
-// 		description: 'Some description here',
-// 		thumbnail: {
-// 			url: 'https://i.imgur.com/AfFp7pu.png',
-// 		},
-// 		fields: [
-// 			{
-// 				name: 'Regular field title',
-// 				value: 'Some value here',
-// 			},
-// 			{
-// 				name: '\u200b',
-// 				value: '\u200b',
-// 				inline: false,
-// 			},
-// 			{
-// 				name: 'Inline field title',
-// 				value: 'Some value here',
-// 				inline: true,
-// 			},
-// 			{
-// 				name: 'Inline field title',
-// 				value: 'Some value here',
-// 				inline: true,
-// 			},
-// 			{
-// 				name: 'Inline field title',
-// 				value: 'Some value here',
-// 				inline: true,
-// 			},
-// 		],
-// 		image: {
-// 			url: 'https://i.imgur.com/AfFp7pu.png',
-// 		},
-// 		timestamp: new Date(),
-// 		footer: {
-// 			text: 'Some footer text here',
-// 			icon_url: 'https://i.imgur.com/AfFp7pu.png',
-// 		},
-// 	};
-// 		channel.send({ embeds: [exampleEmbed] });
-// }
