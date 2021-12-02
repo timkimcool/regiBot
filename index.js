@@ -183,10 +183,16 @@ client.on('interactionCreate', async interaction => {
           // STEP 2: suit power (reds)
           const activeSuits = Game.getCurrPlayerActiveSuits(gameState);
           const attackValue = Game.getCurrPlayerAttackValue(gameState);
-          if (activeSuits.includes(Game.Suit.HEART)) {
+          if (
+            activeSuits.includes(Game.Suit.HEART)
+            && gameState.royal.activeCard.suit !== Game.Suit.HEART
+          ) {
             Game.healFromDiscardPile(gameState, attackValue);
           }
-          if (activeSuits.includes(Game.Suit.DIAMOND)) {
+          if (
+            activeSuits.includes(Game.Suit.DIAMOND)
+            && gameState.royal.activeCard.suit !== Game.Suit.DIAMOND
+          ) {
             Game.dealCards(gameState, attackValue);
             // TODO: don't send to player who has no change in hand.
             for (let i = 0; i < members.length; i++) {
