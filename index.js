@@ -168,19 +168,17 @@ client.on('interactionCreate', async interaction => {
             break;
           }
           gameState.yieldCount = 0;
-          if (play.length === 1 && play[0] === Game.jesterValue) {
-            gameState.isJesterPlayed = true;
-            currBotPhase = BotPhase.WAITING_FOR_JESTER;
-            channel.send(Game.stringifyState(gameState));
-            channel.send(`**[/jester to select whose turn it is next]**`);
-            const handStr = Game.getCurrPlayerHand(gameState).map(Game.stringifyCard).join(' ');
-            memberThreads[gameState.currPlayerIdx].send(privacyStr + (handStr ? handStr : '(empty)'));
-            break;
-          }
           Game.makePlay(gameState, play);
           channel.send(`**[${Game.getCurrentPlayerName(gameState)} played: ${play.map(Game.stringifyCard).join(', ')}]**`);
           const handStr = Game.getCurrPlayerHand(gameState).map(Game.stringifyCard).join(' ');
           memberThreads[gameState.currPlayerIdx].send(privacyStr + (handStr ? handStr : '(empty)'));
+          if (play.length === 1 && play[0].value === Game.jesterValue) {
+            gameState.isJesterPlayed = true;
+            currBotPhase = BotPhase.WAITING_FOR_JESTER;
+            channel.send(Game.stringifyState(gameState));
+            channel.send(`**[/jester to select whose turn it is next]**`);
+            break;
+          }
           // STEP 2: suit power (reds)
           const activeSuits = Game.getCurrPlayerActiveSuits(gameState);
           const attackValue = Game.getCurrPlayerAttackValue(gameState);
@@ -232,7 +230,7 @@ client.on('interactionCreate', async interaction => {
           gameState.currPlayerIdx = [gameState.currPlayerIdx + 1] % gameState.players.length;
           if (Game.getCurrPlayerHand(gameState).length === 0) {
             channel.send(Game.stringifyState(gameState));
-            channel.send(`**[You lost: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
+            channel.send(`**[Game Over: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
             resetBotState();
             break;
           }
@@ -240,7 +238,7 @@ client.on('interactionCreate', async interaction => {
           break;
         }
         if (royalAttackValue > Game.getCurrPlayerHealth(gameState)) {
-          channel.send(`**[You lost: attack: ${royalAttackValue}, health remaining: ${Game.getCurrPlayerHealth(gameState)}]**`);
+          channel.send(`**[Game Over: attack: ${royalAttackValue}, health remaining: ${Game.getCurrPlayerHealth(gameState)}]**`);
           resetBotState();
           break;
         }
@@ -266,7 +264,7 @@ client.on('interactionCreate', async interaction => {
         gameState.currPlayerIdx = gameState.players.findIndex(player => player.displayName === displayName);
         if (Game.getCurrPlayerHand(gameState).length === 0) {
           channel.send(Game.stringifyState(gameState));
-          channel.send(`**[You lost: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
+          channel.send(`**[Game Over: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
           resetBotState();
           break;
         }
@@ -310,7 +308,7 @@ client.on('interactionCreate', async interaction => {
         gameState.currPlayerIdx = [gameState.currPlayerIdx + 1] % gameState.players.length;
         if (Game.getCurrPlayerHand(gameState).length === 0) {
           channel.send(Game.stringifyState(gameState));
-          channel.send(`**[You lost: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
+          channel.send(`**[Game Over: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
           resetBotState();
           break;
         }

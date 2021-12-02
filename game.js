@@ -158,10 +158,11 @@ function getCurrPlayerAttackValue(state) {
 function getCurrPlayerActiveSuits(state) {
   const player = state.players[state.currPlayerIdx];
   const latestPlay = player.plays[player.plays.length - 1];
-  const suits = latestPlay.map(card => card.suit);
+  const suits = latestPlay.map(card => card.suit)
+    .filter(suit => suit !== null);
   return state.isJesterPlayed
     ? suits
-    : suits.filter(card => card.suit !== state.royal.activeCard.suit);
+    : suits.filter(suit => suit !== state.royal.activeCard.suit);
 }
 
 function discardPlayerPlays(state) {
