@@ -322,11 +322,6 @@ function stringifyState(state) {
   return deckStr + royalStr + playersStr;
 }
 
-console.log(
-  plays.slice(0, -1).map(play => `[${play.map(stringifyCard).join(', ')}]`).join(' ')
-  + ' ' + stringifyCard(plays[plays.length - 1][0])
-);
-
 function showHands(state) {
   state.players.forEach(player => {
     console.log(`${player.displayName}:`, player.hand.map(stringifyCard));
