@@ -88,7 +88,9 @@ client.on('interactionCreate', async interaction => {
           break;
 				}
         currBotPhase = BotPhase.WAITING_FOR_JOIN;
-        channel.send('**[New Game: /join to enter the game]**');
+        await channel.send('**[New Game: /join to enter the game]**');
+        await interaction.reply('test!');
+        await interaction.deleteReply();
 				break;
       }
 			case 'join': {
@@ -107,6 +109,8 @@ client.on('interactionCreate', async interaction => {
         // }
         members.push(member);
         channel.send(`**[${member.displayName} has joined the game]**`);
+        await interaction.reply('test!');
+        await interaction.deleteReply();
 				break;
       }
 			case 'start': {
@@ -135,6 +139,8 @@ client.on('interactionCreate', async interaction => {
           const handStr = gameState.players[i].hand.map(Game.stringifyCard).join(' ');
           memberThreads[i].send(privacyStr + (handStr ? handStr : '(empty)'));
         }
+        await interaction.reply('test!');
+        await interaction.deleteReply();
 				break;
       }
 			case 'play': { 
@@ -241,6 +247,8 @@ client.on('interactionCreate', async interaction => {
         currBotPhase = BotPhase.WAITING_FOR_DISCARD;
         channel.send(Game.stringifyState(gameState));
         channel.send(`**[Waiting for /discard against attack: ${royalAttackValue}]**`);
+        await interaction.reply('test!');
+        await interaction.deleteReply();
 				break;
       }
       case 'jester': {
@@ -267,6 +275,8 @@ client.on('interactionCreate', async interaction => {
         }
         currBotPhase = BotPhase.WAITING_FOR_PLAY;
         channel.send(Game.stringifyState(gameState));
+        await interaction.reply('test!');
+        await interaction.deleteReply();
         break;
       }
 			case 'discard': {
@@ -311,6 +321,8 @@ client.on('interactionCreate', async interaction => {
         }
         currBotPhase = BotPhase.WAITING_FOR_PLAY;
         channel.send(Game.stringifyState(gameState));
+        await interaction.reply('test!');
+        await interaction.deleteReply();
         break;
       }
 			case 'end-game': {
