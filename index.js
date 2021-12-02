@@ -77,7 +77,9 @@ client.on('interactionCreate', async interaction => {
 	try {
 		switch (interaction.commandName) {
 			case 'ping': {
-				channel.send('**[Pong]**');
+				await channel.send('**[Pong]**');
+        await interaction.reply('test!');
+        await interaction.deleteReply();
 				break;
       }
 			case 'new-game': {
