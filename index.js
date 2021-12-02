@@ -7,7 +7,6 @@ const { token, clientId, guildId } = require('./config.json');
 const Game = require('./game.js');
 
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
-client.commands = new Collection();
 
 // read events
 const eventFiles = fs.readdirSync('./events').filter(file => file.endsWith('.js'));
@@ -20,7 +19,10 @@ for (const file of eventFiles) {
 	}
 }
 
-// get commands
+
+
+// // get commands
+client.commands = new Collection();
 const commands = [];
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
@@ -31,18 +33,19 @@ for (const file of commandFiles) {
 // load slash commands
 const rest = new REST({ version: '9' }).setToken(token);
 (async () => {
-	try {
-		console.log('Started refreshing application (/) commands.');
-		// guild commands updated instantly
-		await rest.put(
-			Routes.applicationGuildCommands(clientId, guildId),
-			{ body: commands },
-		);
-		console.log('Successfully reloaded application (/) commands.');
-	} catch (error) {
-		console.error(error);
-	}
+  try {
+    console.log('Started refreshing application (/) commands.');
+    // guild commands updated instantly
+    await rest.put(
+      Routes.applicationGuildCommands(clientId, guildId),
+      { body: commands },
+    );
+    console.log('Successfully reloaded application (/) commands.');
+  } catch (error) {
+    console.error(error);
+  }
 })();
+
 
 // bot state
 let members = [];
