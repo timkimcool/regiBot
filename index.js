@@ -130,7 +130,7 @@ client.on('interactionCreate', async interaction => {
         channel.send(Game.stringifyState(gameState));
         for (let i = 0; i < members.length; i++) {
           const handStr = gameState.players[i].hand.map(Game.stringifyCard).join(' ');
-          memberThreads[i].send(privacyStr + handStr);
+          memberThreads[i].send(privacyStr + (handStr ? handStr : '(empty)'));
         }
 				break;
       }
@@ -163,7 +163,7 @@ client.on('interactionCreate', async interaction => {
             break;
           }
           if (!Game.isValidPlay(play)) { 
-            await interaction.reply({ content: `The play you have made is invalid.`, ephemeral: true });
+            await interaction.reply({ content: `The play you made is invalid.`, ephemeral: true });
             break;
           }
           gameState.yieldCount = 0;
@@ -173,13 +173,13 @@ client.on('interactionCreate', async interaction => {
             channel.send(Game.stringifyState(gameState));
             channel.send(`**[/jester to select whose turn it is next]**`);
             const handStr = Game.getCurrPlayerHand(gameState).map(Game.stringifyCard).join(' ');
-            memberThreads[gameState.currPlayerIdx].send(privacyStr + handStr);
+            memberThreads[gameState.currPlayerIdx].send(privacyStr + (handStr ? handStr : '(empty)'));
             break;
           }
           Game.makePlay(gameState, play);
           channel.send(`**[${Game.getCurrentPlayerName(gameState)} played: ${play.map(Game.stringifyCard).join(', ')}]**`);
           const handStr = Game.getCurrPlayerHand(gameState).map(Game.stringifyCard).join(' ');
-          memberThreads[gameState.currPlayerIdx].send(privacyStr + handStr);
+          memberThreads[gameState.currPlayerIdx].send(privacyStr + (handStr ? handStr : '(empty)'));
           // STEP 2: suit power (reds)
           const activeSuits = Game.getCurrPlayerActiveSuits(gameState);
           const attackValue = Game.getCurrPlayerAttackValue(gameState);
@@ -197,7 +197,7 @@ client.on('interactionCreate', async interaction => {
             // TODO: don't send to player who has no change in hand.
             for (let i = 0; i < members.length; i++) {
               const handStr = gameState.players[i].hand.map(Game.stringifyCard).join(' ');
-              memberThreads[i].send(privacyStr + handStr);
+              memberThreads[i].send(privacyStr + (handStr ? handStr : '(empty)'));
             }
           }
           // STEP 3: deal damage
@@ -305,7 +305,7 @@ client.on('interactionCreate', async interaction => {
         Game.discard(gameState, discardCards);
         channel.send(`**[${Game.getCurrentPlayerName(gameState)} discarded: ${discardCards.map(Game.stringifyCard).join(', ')}]**`);
         const handStr = Game.getCurrPlayerHand(gameState).map(Game.stringifyCard).join(' ');
-        memberThreads[gameState.currPlayerIdx].send(privacyStr + handStr);
+        memberThreads[gameState.currPlayerIdx].send(privacyStr + (handStr ? handStr : '(empty)'));
         gameState.currPlayerIdx = [gameState.currPlayerIdx + 1] % gameState.players.length;
         if (Game.getCurrPlayerHand(gameState).length === 0) {
           channel.send(Game.stringifyState(gameState));

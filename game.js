@@ -1,9 +1,15 @@
 // game variables
 const Suit = {
-  CLUB: 'C', //'♧',
-  SPADE: 'S', //'♤',
-  HEART: 'H', //'♡',
-  DIAMOND: 'D', //'♢',
+  CLUB: 'C',
+  SPADE: 'S',
+  HEART: 'H',
+  DIAMOND: 'D',
+};
+const symbolMap =  {
+  C: '♧',
+  S: '♤',
+  H: '♡',
+  D: '♢',
 };
 const playerValues = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 const royalValues = ['J', 'Q', 'K'];
@@ -142,6 +148,9 @@ function getCurrPlayerAttackValue(state) {
   const attackValue = latestPlay.reduce((sum, card) => (
     sum + attackValueMap[card.value]
   ), 0);
+  if (state.royal.activeCard.suit === Suit.CLUB) {
+    return attackValue;
+  }
   const hasClub = getCurrPlayerActiveSuits(state).includes(Suit.CLUB);
   return hasClub ? (attackValue * 2) : attackValue;
 }
@@ -180,7 +189,12 @@ function healFromDiscardPile(state, numCards) {
 
 function getRoyalAttackValue(state) {
   const rawValue = attackValueMap[state.royal.activeCard.value];
-  if (state.isJesterPlayed) return rawValue;
+  if (
+    state.royal.activeCard.suit === Suit.SPADE
+    && !state.isJesterPlayed
+  ) {
+    return rawValue;
+  }
   const shieldValue = getAllCardsInPlay(state).reduce((sum, card) => (
     sum + (card.suit === Suit.SPADE ? attackValueMap[card.value] : 0)
   ), 0)
@@ -282,7 +296,8 @@ function getCurrentPlayerName(gameState) {
 // print helpers:
 
 function stringifyCard(card) {
-  return card.value + (card.suit ? `${card.suit}` : '');
+  // if (card.value === jesterValue) return '🃏';
+  return card.value + (card.suit ? `${symbolMap[card.suit]}` : '');
 }
 
 function stringifyState(state) {
@@ -295,7 +310,9 @@ function stringifyState(state) {
   let playersStr = '';
   for (let i = 0; i < state.players.length; i++) {
     const player = state.players[i];
-    const playsStr = player.plays.map(play => play.map(stringifyCard)).join(' ');
+    const plays = player.plays;
+    const playsStr = plays.slice(0, -1).map(play => `[${play.map(stringifyCard).join(', ')}]`).join(' ')
+      + ' ' + stringifyCard(plays[plays.length - 1][0]);
     const turnStr = i === state.currPlayerIdx ? '🗹' : '☐';
     const playerStr = `\n\n${turnStr} ${player.displayName}`
       + `\ncards in play: ${playsStr === '' ? '(none)' : playsStr}`
@@ -304,6 +321,11 @@ function stringifyState(state) {
   }
   return deckStr + royalStr + playersStr;
 }
+
+console.log(
+  plays.slice(0, -1).map(play => `[${play.map(stringifyCard).join(', ')}]`).join(' ')
+  + ' ' + stringifyCard(plays[plays.length - 1][0])
+);
 
 function showHands(state) {
   state.players.forEach(player => {
