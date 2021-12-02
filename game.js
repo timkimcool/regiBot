@@ -195,11 +195,24 @@ function getRoyalAttackValue(state) {
   ) {
     return rawValue;
   }
-  const shieldValue = getAllCardsInPlay(state).reduce((sum, card) => (
-    sum + (card.suit === Suit.SPADE ? attackValueMap[card.value] : 0)
-  ), 0)
+  const shieldValue = getAllPlays(state).reduce((sum, play) => {
+    const hasSpade = play.map(c => c.suit).includes(Suit.SPADE);
+    return sum + (hasSpade
+      ? play.map(c => attackValueMap[c.value]).reduce((a, c) => a + c, 0)
+      : 0);
+  }, 0)
   const updatedValue = rawValue - shieldValue;
   return updatedValue < 0 ? 0 : updatedValue;
+}
+
+function getAllPlays(state) {
+  const plays = [];
+  for (const player of state.players) {
+    for (const play of player.plays) {
+      plays.push(play);
+    }
+  }
+  return plays;
 }
 
 function getAllCardsInPlay(state) {
@@ -312,7 +325,7 @@ function stringifyState(state) {
     const player = state.players[i];
     const plays = player.plays;
     const playsStr = plays.slice(0, -1).map(play => `[${play.map(stringifyCard).join(', ')}]`).join(' ')
-      + ' ' + stringifyCard(plays[plays.length - 1][0]);
+      + (plays.length ? ` ${plays[plays.length - 1].map(stringifyCard).join(', ')}` : '');
     const turnStr = i === state.currPlayerIdx ? '🗹' : '☐';
     const playerStr = `\n\n${turnStr} ${player.displayName}`
       + `\ncards in play: ${playsStr === '' ? '(none)' : playsStr}`

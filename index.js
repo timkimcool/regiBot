@@ -19,8 +19,6 @@ for (const file of eventFiles) {
 	}
 }
 
-
-
 // // get commands
 client.commands = new Collection();
 const commands = [];
@@ -218,8 +216,8 @@ client.on('interactionCreate', async interaction => {
             gameState.royal.activeCard = null;
             gameState.royal.health = null;
             if (gameState.castleDeck.length === 0) {
+              channel.send('**[You won Regicide]**');
               resetBotState();
-              channel.send('**[You have won Regicide]**');
               break;
             } else {
               Game.drawNewRoyal(gameState);
@@ -242,8 +240,8 @@ client.on('interactionCreate', async interaction => {
           break;
         }
         if (royalAttackValue > Game.getCurrPlayerHealth(gameState)) {
-          resetBotState();
           channel.send(`**[You lost: attack: ${royalAttackValue}, health remaining: ${Game.getCurrPlayerHealth(gameState)}]**`);
+          resetBotState();
           break;
         }
         currBotPhase = BotPhase.WAITING_FOR_DISCARD;
