@@ -57,7 +57,7 @@ const BotPhase = {
 }
 let currBotPhase = BotPhase.IDLE;
 let gameState = null;
-const privacyStr = '-------------------------------------------------------------\n';
+const privacyStr = '--------------------------------------------------------------\n';
 
 function resetBotState() {
   for (let i = 0; i < members.length; i++) {
@@ -140,7 +140,7 @@ client.on('interactionCreate', async interaction => {
           await interaction.reply({ content: `Invalid command; the current BotPhase is: ${currBotPhase}`, ephemeral: true });
           break;
 				}
-        if (interaction.member.user.username !== Game.getCurrentPlayerName(gameState)) {
+        if (interaction.member.user.username !== Game.getCurrPlayerName(gameState)) {
           await interaction.reply({ content: `It is not your turn to play.`, ephemeral: true });
           break;
         }
@@ -154,7 +154,7 @@ client.on('interactionCreate', async interaction => {
             channel.send(`**[Players can no longer yield consecutively]**`);
             break;
           }
-          channel.send(`**[${Game.getCurrentPlayerName(gameState)} yielded]**`);
+          channel.send(`**[${Game.getCurrPlayerName(gameState)} yielded]**`);
           gameState.yieldCount++;
         } else { // regular play
           const play = Game.parseCards(input);
@@ -169,7 +169,7 @@ client.on('interactionCreate', async interaction => {
           }
           gameState.yieldCount = 0;
           Game.makePlay(gameState, play);
-          channel.send(`**[${Game.getCurrentPlayerName(gameState)} played: ${play.map(Game.stringifyCard).join(', ')}]**`);
+          channel.send(`**[${Game.getCurrPlayerName(gameState)} played: ${play.map(Game.stringifyCard).join(', ')}]**`);
           const handStr = Game.getCurrPlayerHand(gameState).map(Game.stringifyCard).join(' ');
           memberThreads[gameState.currPlayerIdx].send(privacyStr + (handStr ? handStr : '(empty)'));
           if (play.length === 1 && play[0].value === Game.jesterValue) {
@@ -182,16 +182,10 @@ client.on('interactionCreate', async interaction => {
           // STEP 2: suit power (reds)
           const activeSuits = Game.getCurrPlayerActiveSuits(gameState);
           const attackValue = Game.getCurrPlayerAttackValue(gameState);
-          if (
-            activeSuits.includes(Game.Suit.HEART)
-            && gameState.royal.activeCard.suit !== Game.Suit.HEART
-          ) {
+          if (activeSuits.includes(Game.Suit.HEART)) {
             Game.healFromDiscardPile(gameState, attackValue);
           }
-          if (
-            activeSuits.includes(Game.Suit.DIAMOND)
-            && gameState.royal.activeCard.suit !== Game.Suit.DIAMOND
-          ) {
+          if (activeSuits.includes(Game.Suit.DIAMOND)) {
             Game.dealCards(gameState, attackValue);
             // TODO: don't send to player who has no change in hand.
             for (let i = 0; i < members.length; i++) {
@@ -252,7 +246,7 @@ client.on('interactionCreate', async interaction => {
           await interaction.reply({ content: `Invalid command; the current BotPhase is: ${currBotPhase}`, ephemeral: true });
           break;
         }
-        if (interaction.member.user.username !== Game.getCurrentPlayerName(gameState)) {
+        if (interaction.member.user.username !== Game.getCurrPlayerName(gameState)) {
           await interaction.reply({ content: `It is not your turn to play.`, ephemeral: true });
           break;
         }
@@ -261,6 +255,7 @@ client.on('interactionCreate', async interaction => {
           await interaction.reply({ content: `The player you selected is not recognized: ${displayName}`, ephemeral: true });
           break;
         }
+        channel.send(`**[${gameState.players[gameState.currPlayerIdx].displayName} selected ${displayName}]**`);
         gameState.currPlayerIdx = gameState.players.findIndex(player => player.displayName === displayName);
         if (Game.getCurrPlayerHand(gameState).length === 0) {
           channel.send(Game.stringifyState(gameState));
@@ -277,7 +272,7 @@ client.on('interactionCreate', async interaction => {
 					await interaction.reply({ content: `Invalid command; the current BotPhase is: ${currBotPhase}`, ephemeral: true });
           break;
 				}
-        if (interaction.member.user.username !== Game.getCurrentPlayerName(gameState)) {
+        if (interaction.member.user.username !== Game.getCurrPlayerName(gameState)) {
           await interaction.reply({ content: `It is not your turn to discard.`, ephemeral: true });
           break;
         }
@@ -302,7 +297,7 @@ client.on('interactionCreate', async interaction => {
           break;
         }
         Game.discard(gameState, discardCards);
-        channel.send(`**[${Game.getCurrentPlayerName(gameState)} discarded: ${discardCards.map(Game.stringifyCard).join(', ')}]**`);
+        channel.send(`**[${Game.getCurrPlayerName(gameState)} discarded: ${discardCards.map(Game.stringifyCard).join(', ')}]**`);
         const handStr = Game.getCurrPlayerHand(gameState).map(Game.stringifyCard).join(' ');
         memberThreads[gameState.currPlayerIdx].send(privacyStr + (handStr ? handStr : '(empty)'));
         gameState.currPlayerIdx = [gameState.currPlayerIdx + 1] % gameState.players.length;
