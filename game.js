@@ -1,3 +1,5 @@
+const { MessageAttachment } = require('discord.js');
+
 // game variables
 const Suit = {
   CLUB: 'C',
@@ -339,6 +341,66 @@ function stringifyState(state) {
   return deckStr + royalStr + playersStr;
 }
 
+function embedState(state) {
+  let fields = [];
+  let url = 'https://www.badgersfrommars.com/assets/Regicide-Rules.pdf';
+  let title = 'REGICIDE';
+  let color = '0x0099ff';
+  // let deckEmbed = {};
+  // deckEmbed.name = 'Decks'
+  // deckEmbed.value = `\n[Discard Pile: ${state.discardPile.length}]`
+  // + `\n[Castle Deck: ${state.castleDeck.length}]`
+  // + `\n[Tavern Deck: ${state.tavernDeck.length}]`;
+  fields.push({
+    name: 'Discard Pile',
+    value: '' + state.discardPile.length,
+    inline: true,
+  });
+  fields.push({
+    name: 'Castle Deck',
+    value: '' + state.castleDeck.length,
+    inline: true,
+  });
+  fields.push({
+    name: 'Tavern Deck',
+    value: '' + state.tavernDeck.length,
+    inline: true,
+  });
+
+  // fields.push(deckEmbed);
+  console.log(state.royal.activeCard);
+  let royalEmbed = {};
+  royalEmbed.name = 'Royals'
+  royalEmbed.value = `\nCard: ${stringifyCard(state.royal.activeCard)}`
+  + `\nAttack: ${getRoyalAttackValue(state)}`
+  + `\nHealth: ${state.royal.health}`;
+  fields.push(royalEmbed);
+  for (let i = 0; i < state.players.length; i++) {
+    let playerEmbed = {};
+    const player = state.players[i];
+    const plays = player.plays;
+    const playsStr = plays.slice(0, -1).map(play => `[${play.map(stringifyCard).join(', ')}]`).join(' ')
+      + (plays.length ? ` ${plays[plays.length - 1].map(stringifyCard).join(', ')}` : '');
+    const turnStr = i === state.currPlayerIdx ? '🗹' : '☐';
+    playerEmbed.name = `${turnStr} ${player.displayName}`
+    playerEmbed.value = `\ncards in play:\n ${playsStr === '' ? '(none)' : playsStr}`
+      + `\ncards in hand: ${player.hand.length}`;
+    playerEmbed.inline = true;
+    fields.push(playerEmbed);
+  }
+  const file = new MessageAttachment(`../regibot/images/${state.royal.activeCard.value}${state.royal.activeCard.suit}.png`);
+  image = { url: `attachment://regibot/images/${state.royal.activeCard.value}${state.royal.activeCard.suit}.png` };
+  return {
+    embeds: [{
+      color: color,
+      title: title,
+      url: url,
+      fields: fields,
+      image: image,
+    }],
+    files: [file] }
+};
+
 function showHands(state) {
   state.players.forEach(player => {
     console.log(`${player.displayName}:`, player.hand.map(stringifyCard));
@@ -369,4 +431,5 @@ module.exports = {
   getCurrPlayerName,
   stringifyCard,
   stringifyState,
+  embedState,
 }
