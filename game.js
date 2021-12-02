@@ -148,7 +148,10 @@ function getCurrPlayerAttackValue(state) {
   const attackValue = latestPlay.reduce((sum, card) => (
     sum + attackValueMap[card.value]
   ), 0);
-  if (state.royal.activeCard.suit === Suit.CLUB) {
+  if (
+    state.royal.activeCard.suit === Suit.CLUB
+    && !state.isJesterPlayed
+  ) {
     return attackValue;
   }
   const hasClub = getCurrPlayerActiveSuits(state).includes(Suit.CLUB);
@@ -303,7 +306,7 @@ function doCardsExistInHand(gameState, cards) {
   ), true);
 }
 
-function getCurrentPlayerName(gameState) {
+function getCurrPlayerName(gameState) {
   return gameState.players[gameState.currPlayerIdx].displayName;
 }
 
@@ -363,7 +366,7 @@ module.exports = {
   isValidInput,
   isValidPlay,
   doCardsExistInHand,
-  getCurrentPlayerName,
+  getCurrPlayerName,
   stringifyCard,
   stringifyState,
 }
