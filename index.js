@@ -81,6 +81,75 @@ client.on('interactionCreate', async interaction => {
         await interaction.deleteReply();
 				break;
       }
+      case 'help': {
+        const helpEmbed = {
+          color: 0x0099ff,
+          title: 'REGICIDE',
+          description: 'A Cooperative card game for 2-4 players' +
+          '\n[How to Play Video](https://youtu.be/7XoRlKzLobk)' +
+          '\n[Official Rules](https://www.badgersfrommars.com/assets/Regicide-Rules.pdf)',
+          fields: [
+            {
+              name: '/new-game',
+              value: 'Command for starting a new game',
+            },
+            {
+              name: '/join',
+              value: 'Command for joining new game',
+            },
+            {
+              name: '/play',
+              value: 'Command for playing cards' +
+              '\nType: /play > enter > cards (ex. AS 4H) > enter'
+            },
+            {
+              name: '/discard',
+              value: 'Command for discarding card when taking damage' +
+              '\n Similar input to /play except with /discard',
+            },
+            {
+              name: '/end-game',
+              value: 'Use this command to end the current game'
+            },
+            {
+              name: 'Juggernaut (J)',
+              value: 'Attack: 10' +
+              '\n Health: 20',
+              inline: true,
+            },
+            {
+              name: 'Queen (Q)',
+              value: 'Attack: 15' +
+              '\n Health: 30',
+              inline: true,
+            },
+            {
+              name: 'King (K)',
+              value: 'Attack: 20' +
+              '\n Health: 40',
+              inline: true,
+            },
+            {
+              name: 'Suits',
+              value: '\nC: Clubs (♧)' +
+              '\nS: Spade (♤)' +
+              '\nH: Hearts (♡)' +
+              '\nD: Diamond (♢)',
+              inline: true,
+            },
+            {
+              name: 'Other Cards',
+              value: '\nA: Animal Companion' +
+              '\nW: Jester',
+              inline: true,
+            },
+          ],
+        };
+        await channel.send({ embeds: [helpEmbed] });
+        await interaction.reply('loading!');
+        await interaction.deleteReply();
+				break;
+      }
 			case 'new-game': {
 				if (currBotPhase !== BotPhase.IDLE) {
 					await interaction.reply({ content: 'Game is already in progress!', ephemeral: true });
@@ -102,10 +171,10 @@ client.on('interactionCreate', async interaction => {
           break;
         }
         const member = interaction.member;
-        if (members.find(m => m.id === member.id)) {
-          await interaction.reply({ content: 'You have already joined the game.', ephemeral: true });
-          break;
-        }
+        // if (members.find(m => m.id === member.id)) {
+        //   await interaction.reply({ content: 'You have already joined the game.', ephemeral: true });
+        //   break;
+        // }
         members.push(member);
         channel.send(`**[${member.displayName} has joined the game]**`);
         await interaction.reply('loading!');
@@ -229,6 +298,8 @@ client.on('interactionCreate', async interaction => {
               if (Game.getCurrPlayerHand(gameState).length === 0) {
                 await channel.send(`**[Game Over: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
                 resetBotState();
+                await interaction.reply('loading!');
+                await interaction.deleteReply();
                 break;
               }
               await interaction.reply('loading!');
@@ -318,7 +389,7 @@ client.on('interactionCreate', async interaction => {
         ), 0);
         const royalAttackValue = Game.getRoyalAttackValue(gameState);
         if (discardValue < royalAttackValue) {
-          await interaction.reply({ content: `Discard value of (${discardValue}) is not enough against attack: (${royalAttackValue})`, ephemeral: true });
+          await interaction.reply({ content: `Discard value of (${discardValue}) is not enough against attack (${royalAttackValue})`, ephemeral: true });
           break;
         }
         Game.discard(gameState, discardCards);
