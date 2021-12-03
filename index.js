@@ -79,7 +79,7 @@ client.on('interactionCreate', async interaction => {
 			case 'ping': {
 				await channel.send('**[Pong]**');
         // const file = new MessageAttachment('../regibot/images/JD.png');
-        // await channel.send({ embeds: [{title: 'test', image: { url: 'attachment://regibot/images/JD.png'}}], files: [file] });
+        // await channel.send({ embeds: [{title: 'test', image: { url: 'attachment://JD.png'}}], files: [file] });
         await interaction.reply('loading!');
         await interaction.deleteReply();
 				break;

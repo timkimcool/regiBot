@@ -346,6 +346,9 @@ function embedState(state) {
   let url = 'https://www.badgersfrommars.com/assets/Regicide-Rules.pdf';
   let title = 'REGICIDE';
   let color = '0x0099ff';
+  let thumbnail = {
+    url: 'https://cf.geekdo-images.com/C9U2E51tkzLljewFEGQ74g__imagepagezoom/img/XyOBJLNWHZzoKvsLXTTbpJiSf-A=/fit-in/1200x900/filters:no_upscale():strip_icc()/pic5837347.jpg'
+  }
   // let deckEmbed = {};
   // deckEmbed.name = 'Decks'
   // deckEmbed.value = `\n[Discard Pile: ${state.discardPile.length}]`
@@ -366,9 +369,7 @@ function embedState(state) {
     value: '' + state.tavernDeck.length,
     inline: true,
   });
-
   // fields.push(deckEmbed);
-  console.log(state.royal.activeCard);
   let royalEmbed = {};
   royalEmbed.name = 'Royals'
   royalEmbed.value = `\nCard: ${stringifyCard(state.royal.activeCard)}`
@@ -389,11 +390,12 @@ function embedState(state) {
     fields.push(playerEmbed);
   }
   const file = new MessageAttachment(`../regibot/images/${state.royal.activeCard.value}${state.royal.activeCard.suit}.png`);
-  image = { url: `attachment://regibot/images/${state.royal.activeCard.value}${state.royal.activeCard.suit}.png` };
+  image = { url: `attachment://${state.royal.activeCard.value}${state.royal.activeCard.suit}.png` };
   return {
     embeds: [{
       color: color,
       title: title,
+      thumbnail: thumbnail,
       url: url,
       fields: fields,
       image: image,
