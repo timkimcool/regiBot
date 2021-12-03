@@ -343,17 +343,13 @@ function stringifyState(state) {
 
 function embedState(state) {
   let fields = [];
-  let url = 'https://www.badgersfrommars.com/assets/Regicide-Rules.pdf';
-  let title = 'REGICIDE';
+  // let url = 'https://www.badgersfrommars.com/assets/Regicide-Rules.pdf';
+  let url = 'https://example.com/';
+  let title = 'BOARD';
   let color = '0x0099ff';
   let thumbnail = {
     url: 'https://cf.geekdo-images.com/C9U2E51tkzLljewFEGQ74g__imagepagezoom/img/XyOBJLNWHZzoKvsLXTTbpJiSf-A=/fit-in/1200x900/filters:no_upscale():strip_icc()/pic5837347.jpg'
   }
-  // let deckEmbed = {};
-  // deckEmbed.name = 'Decks'
-  // deckEmbed.value = `\n[Discard Pile: ${state.discardPile.length}]`
-  // + `\n[Castle Deck: ${state.castleDeck.length}]`
-  // + `\n[Tavern Deck: ${state.tavernDeck.length}]`;
   let discardVal = state.discardPile.length;
   discardVal += discardVal > 0 ? ` (${stringifyCard(state.discardPile[state.discardPile.length - 1])})`  : '';
   fields.push({
@@ -389,7 +385,21 @@ function embedState(state) {
     playerEmbed.value = `\ncards in play:\n ${playsStr === '' ? '(none)' : playsStr}`
       + `\ncards in hand: ${player.hand.length}`;
     playerEmbed.inline = true;
+    if (state.players.length === 4 && i === 2) {
+      fields.push({
+        name: '\u200b',
+        value: '\u200b',
+        inline: true,
+      })
+    }
     fields.push(playerEmbed);
+  }
+  if (state.players.length === 4) {
+    fields.push({
+      name: '\u200b',
+      value: '\u200b',
+      inline: true,
+    })
   }
   const file = new MessageAttachment(`../regibot/images/${state.royal.activeCard.value}${state.royal.activeCard.suit}.png`);
   image = { url: `attachment://${state.royal.activeCard.value}${state.royal.activeCard.suit}.png` };

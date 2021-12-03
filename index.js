@@ -9,15 +9,15 @@ const Game = require('./game.js');
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
 
 // read events
-const eventFiles = fs.readdirSync('./events').filter(file => file.endsWith('.js'));
-for (const file of eventFiles) {
-	const event = require(`./events/${file}`);
-	if (event.once) {
-		client.once(event.name, (...args) => event.execute(...args));
-	} else {
-		client.on(event.name, (...args) => event.execute(...args));
-	}
-}
+// const eventFiles = fs.readdirSync('./events').filter(file => file.endsWith('.js'));
+// for (const file of eventFiles) {
+// 	const event = require(`./events/${file}`);
+// 	if (event.once) {
+// 		client.once(event.name, (...args) => event.execute(...args));
+// 	} else {
+// 		client.on(event.name, (...args) => event.execute(...args));
+// 	}
+// }
 
 // get commands
 client.commands = new Collection();
@@ -43,6 +43,10 @@ const rest = new REST({ version: '9' }).setToken(token);
     console.error(error);
   }
 })();
+
+client.once('ready', () => {
+	console.log('Ready!');
+});
 
 // bot state
 let members = [];
@@ -85,6 +89,9 @@ client.on('interactionCreate', async interaction => {
         const helpEmbed = {
           color: 0x0099ff,
           title: 'REGICIDE',
+          thumbnail: {
+              url: 'https://cf.geekdo-images.com/C9U2E51tkzLljewFEGQ74g__imagepagezoom/img/XyOBJLNWHZzoKvsLXTTbpJiSf-A=/fit-in/1200x900/filters:no_upscale():strip_icc()/pic5837347.jpg'
+          },
           description: 'A Cooperative card game for 2-4 players' +
           '\n[How to Play Video](https://youtu.be/7XoRlKzLobk)' +
           '\n[Official Rules](https://www.badgersfrommars.com/assets/Regicide-Rules.pdf)',
@@ -144,6 +151,9 @@ client.on('interactionCreate', async interaction => {
               inline: true,
             },
           ],
+        // image: {
+        //   url: 'https://cf.geekdo-images.com/C9U2E51tkzLljewFEGQ74g__imagepagezoom/img/XyOBJLNWHZzoKvsLXTTbpJiSf-A=/fit-in/1200x900/filters:no_upscale():strip_icc()/pic5837347.jpg'
+        // },
         };
         await channel.send({ embeds: [helpEmbed] });
         await interaction.reply('loading!');
