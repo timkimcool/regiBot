@@ -78,8 +78,6 @@ client.on('interactionCreate', async interaction => {
 		switch (interaction.commandName) {
 			case 'ping': {
 				await channel.send('**[Pong]**');
-        // const file = new MessageAttachment('../regibot/images/JD.png');
-        // await channel.send({ embeds: [{title: 'test', image: { url: 'attachment://JD.png'}}], files: [file] });
         await interaction.reply('loading!');
         await interaction.deleteReply();
 				break;
@@ -105,10 +103,10 @@ client.on('interactionCreate', async interaction => {
           break;
         }
         const member = interaction.member;
-        // if (members.find(m => m.id === member.id)) {
-        //   await interaction.reply({ content: 'You have already joined the game.', ephemeral: true });
-        //   break;
-        // }
+        if (members.find(m => m.id === member.id)) {
+          await interaction.reply({ content: 'You have already joined the game.', ephemeral: true });
+          break;
+        }
         members.push(member);
         channel.send(`**[${member.displayName} has joined the game]**`);
         await interaction.reply('loading!');
@@ -136,7 +134,7 @@ client.on('interactionCreate', async interaction => {
         }
         gameState = Game.initState(members);
         currBotPhase = BotPhase.WAITING_FOR_PLAY;
-        channel.send(Game.embedState(gameState));
+        await channel.send(Game.embedState(gameState));
         for (let i = 0; i < members.length; i++) {
           const handStr = gameState.players[i].hand.map(Game.stringifyCard).join(' ');
           memberThreads[i].send(privacyStr + (handStr ? handStr : '(empty)'));
@@ -185,8 +183,8 @@ client.on('interactionCreate', async interaction => {
           if (play.length === 1 && play[0].value === Game.jesterValue) {
             gameState.isJesterPlayed = true;
             currBotPhase = BotPhase.WAITING_FOR_JESTER;
-            channel.send(Game.embedState(gameState));
-            channel.send(`**[/jester to select whose turn it is next]**`);
+            await channel.send(Game.embedState(gameState));
+            await channel.send(`**[/jester to select whose turn it is next]**`);
             await interaction.reply('loading!');
             await interaction.deleteReply();
             break;
@@ -221,14 +219,14 @@ client.on('interactionCreate', async interaction => {
             gameState.royal.activeCard = null;
             gameState.royal.health = null;
             if (gameState.castleDeck.length === 0) {
-              channel.send('**[You won Regicide]**');
+              await channel.send('**[You beat Regicide]**');
               resetBotState();
               await interaction.reply('loading!');
               await interaction.deleteReply();
               break;
             } else {
               Game.drawNewRoyal(gameState);
-              channel.send(Game.embedState(gameState));
+              await channel.send(Game.embedState(gameState));
               await interaction.reply('loading!');
               await interaction.deleteReply();
               break;
@@ -240,12 +238,16 @@ client.on('interactionCreate', async interaction => {
         if (royalAttackValue === 0) {
           gameState.currPlayerIdx = [gameState.currPlayerIdx + 1] % gameState.players.length;
           if (Game.getCurrPlayerHand(gameState).length === 0) {
-            channel.send(Game.embedState(gameState));
-            channel.send(`**[Game Over: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
+            await channel.send(Game.embedState(gameState));
+            await channel.send(`**[Game Over: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
             resetBotState();
+            await interaction.reply('loading!');
+            await interaction.deleteReply();
             break;
           }
-          channel.send(Game.embedState(gameState));
+          await channel.send(Game.embedState(gameState));
+          await interaction.reply('loading!');
+          await interaction.deleteReply();
           break;
         }
         if (royalAttackValue > Game.getCurrPlayerHealth(gameState)) {
@@ -254,9 +256,9 @@ client.on('interactionCreate', async interaction => {
           break;
         }
         currBotPhase = BotPhase.WAITING_FOR_DISCARD;
-        channel.send(Game.embedState(gameState));
-        channel.send(`**[Waiting for /discard against attack: ${royalAttackValue}]**`);
-        await interaction.reply('test!');
+        await channel.send(Game.embedState(gameState));
+        await channel.send(`**[Waiting for /discard against attack: ${royalAttackValue}]**`);
+        await interaction.reply('loading!');
         await interaction.deleteReply();
 				break;
       }
@@ -277,14 +279,14 @@ client.on('interactionCreate', async interaction => {
         channel.send(`**[${gameState.players[gameState.currPlayerIdx].displayName} selected ${displayName}]**`);
         gameState.currPlayerIdx = gameState.players.findIndex(player => player.displayName === displayName);
         if (Game.getCurrPlayerHand(gameState).length === 0) {
-          channel.send(Game.embedState(gameState));
-          channel.send(`**[Game Over: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
+          await channel.send(Game.embedState(gameState));
+          await channel.send(`**[Game Over: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
           resetBotState();
           break;
         }
         currBotPhase = BotPhase.WAITING_FOR_PLAY;
-        channel.send(Game.embedState(gameState));
-        await interaction.reply('test!');
+        await channel.send(Game.embedState(gameState));
+        await interaction.reply('loading!');
         await interaction.deleteReply();
         break;
       }
@@ -307,8 +309,6 @@ client.on('interactionCreate', async interaction => {
           await interaction.reply({ content: `You don't have the cards for this discard.`, ephemeral: true });
           break;
         }
-        // TODO: check if value is excessive(?)
-        // TODO: extract & generalize
         const discardValue = discardCards.reduce((sum, card) => (
           sum + Game.attackValueMap[card.value]
         ), 0);
@@ -323,16 +323,16 @@ client.on('interactionCreate', async interaction => {
         memberThreads[gameState.currPlayerIdx].send(privacyStr + (handStr ? handStr : '(empty)'));
         gameState.currPlayerIdx = [gameState.currPlayerIdx + 1] % gameState.players.length;
         if (Game.getCurrPlayerHand(gameState).length === 0) {
-          channel.send(Game.embedState(gameState));
-          channel.send(`**[Game Over: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
+          await channel.send(Game.embedState(gameState));
+          await channel.send(`**[Game Over: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
           resetBotState();
           await interaction.reply('loading!');
           await interaction.deleteReply();
           break;
         }
         currBotPhase = BotPhase.WAITING_FOR_PLAY;
-        channel.send(Game.embedState(gameState));
-        await interaction.reply('test!');
+        await channel.send(Game.embedState(gameState));
+        await interaction.reply('loading!');
         await interaction.deleteReply();
         break;
       }
@@ -344,7 +344,6 @@ client.on('interactionCreate', async interaction => {
 				break;
       }
 		}
-		// await command.execute(interaction);
 	} catch (error) {
 		console.error(error);
 		await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });

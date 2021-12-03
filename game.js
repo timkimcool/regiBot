@@ -354,9 +354,11 @@ function embedState(state) {
   // deckEmbed.value = `\n[Discard Pile: ${state.discardPile.length}]`
   // + `\n[Castle Deck: ${state.castleDeck.length}]`
   // + `\n[Tavern Deck: ${state.tavernDeck.length}]`;
+  let discardVal = state.discardPile.length;
+  discardVal += discardVal > 0 ? ` (${stringifyCard(state.discardPile[state.discardPile.length - 1])})`  : '';
   fields.push({
     name: 'Discard Pile',
-    value: '' + state.discardPile.length,
+    value: discardVal,
     inline: true,
   });
   fields.push({
