@@ -19,7 +19,7 @@ for (const file of eventFiles) {
 	}
 }
 
-// // get commands
+// get commands
 client.commands = new Collection();
 const commands = [];
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
@@ -43,7 +43,6 @@ const rest = new REST({ version: '9' }).setToken(token);
     console.error(error);
   }
 })();
-
 
 // bot state
 let members = [];
@@ -227,6 +226,11 @@ client.on('interactionCreate', async interaction => {
             } else {
               Game.drawNewRoyal(gameState);
               await channel.send(Game.embedState(gameState));
+              if (Game.getCurrPlayerHand(gameState).length === 0) {
+                await channel.send(`**[Game Over: ${gameState.players[gameState.currPlayerIdx].displayName} has no more cards]**`);
+                resetBotState();
+                break;
+              }
               await interaction.reply('loading!');
               await interaction.deleteReply();
               break;
