@@ -401,7 +401,7 @@ function embedState(state) {
       inline: true,
     })
   }
-  const file = new MessageAttachment(`../regibot/images/${state.royal.activeCard.value}${state.royal.activeCard.suit}.png`);
+  const file = new MessageAttachment(`../app/images/${state.royal.activeCard.value}${state.royal.activeCard.suit}.png`);
   image = { url: `attachment://${state.royal.activeCard.value}${state.royal.activeCard.suit}.png` };
   return {
     embeds: [{
