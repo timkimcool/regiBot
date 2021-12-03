@@ -216,6 +216,7 @@ client.on('interactionCreate', async interaction => {
               channel.send(`**[${Game.stringifyCard(gameState.royal.activeCard)} has been moved to the Tavern Deck]**`);
             } else {
               gameState.discardPile.push(gameState.royal.activeCard);
+              channel.send(`**[${Game.stringifyCard(gameState.royal.activeCard)} has been moved to the Discard Pile]**`);
             }
             gameState.royal.activeCard = null;
             gameState.royal.health = null;
