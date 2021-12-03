@@ -160,6 +160,18 @@ client.on('interactionCreate', async interaction => {
         await interaction.deleteReply();
 				break;
       }
+      case 'specials': {
+
+      }
+      case 'attacks': {
+        
+      }
+      case 'suits': {
+        
+      }
+      case 'learn': {
+        
+      }
 			case 'new-game': {
 				if (currBotPhase !== BotPhase.IDLE) {
 					await interaction.reply({ content: 'Game is already in progress!', ephemeral: true });
