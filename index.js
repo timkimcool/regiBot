@@ -1,11 +1,13 @@
 const { REST } = require('@discordjs/rest');
-const { Client, Collection, Intents, MessageAttachment } = require('discord.js');
+const { Client, Collection, Intents } = require('discord.js');
 const { Routes } = require('discord-api-types/v9');
-
 const fs = require('fs');
-const { token, clientId, guildId } = require('./config.json');
 const Game = require('./game.js');
 
+// const { token, clientId, guildId } = require('./config.json');
+const token = process.env.token;
+const clientId = process.env.clientId;
+const guildId = process.env.guildId;
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
 
 // read events
@@ -92,9 +94,7 @@ client.on('interactionCreate', async interaction => {
           thumbnail: {
               url: 'https://cf.geekdo-images.com/C9U2E51tkzLljewFEGQ74g__imagepagezoom/img/XyOBJLNWHZzoKvsLXTTbpJiSf-A=/fit-in/1200x900/filters:no_upscale():strip_icc()/pic5837347.jpg'
           },
-          description: 'A Cooperative card game for 2-4 players' +
-          '\n[How to Play Video](https://youtu.be/7XoRlKzLobk)' +
-          '\n[Official Rules](https://www.badgersfrommars.com/assets/Regicide-Rules.pdf)',
+          description: 'A Cooperative card game for 2-4 players',
           fields: [
             {
               name: '/new-game',
@@ -119,41 +119,22 @@ client.on('interactionCreate', async interaction => {
               value: 'Use this command to end the current game'
             },
             {
-              name: 'Juggernaut (J)',
-              value: 'Attack: 10' +
-              '\n Health: 20',
-              inline: true,
+              name: '/specials',
+              value: 'Displays suit powers'
             },
             {
-              name: 'Queen (Q)',
-              value: 'Attack: 15' +
-              '\n Health: 30',
-              inline: true,
+              name: '/attacks',
+              value: 'Displays attack values for special cards'
             },
             {
-              name: 'King (K)',
-              value: 'Attack: 20' +
-              '\n Health: 40',
-              inline: true,
+              name: '/suits',
+              value: 'Displays suit abbreviations'
             },
             {
-              name: 'Suits',
-              value: '\nC: Clubs (♧)' +
-              '\nS: Spade (♤)' +
-              '\nH: Hearts (♡)' +
-              '\nD: Diamond (♢)',
-              inline: true,
-            },
-            {
-              name: 'Other Cards',
-              value: '\nA: Animal Companion' +
-              '\nW: Jester',
-              inline: true,
+              name: '/learn',
+              value: 'Displays links to learn the game'
             },
           ],
-        // image: {
-        //   url: 'https://cf.geekdo-images.com/C9U2E51tkzLljewFEGQ74g__imagepagezoom/img/XyOBJLNWHZzoKvsLXTTbpJiSf-A=/fit-in/1200x900/filters:no_upscale():strip_icc()/pic5837347.jpg'
-        // },
         };
         await channel.send({ embeds: [helpEmbed] });
         await interaction.reply('loading!');
@@ -161,16 +142,77 @@ client.on('interactionCreate', async interaction => {
 				break;
       }
       case 'specials': {
-
+        const specialEmbed = {
+          color: 0x0099ff,
+          fields: [
+            {
+              name: 'Specials',
+              value: 'Clubs (♧) --> Deal double damage' +
+              '\nSpade (♤) --> Shield from royal attack' +
+              '\nHearts (♡) --> Heal from discard pile' +
+              '\nDiamond (♢) --> Draw cards',
+            }
+          ]
+        }
+        await channel.send({ embeds: [specialEmbed] });
+        await interaction.reply('loading!');
+        await interaction.deleteReply();
+        break;
       }
       case 'attacks': {
-        
+        const attackEmbed = {
+          color: 0x0099ff,
+          fields: [
+            {
+              name: 'Attacks',
+              value: 'Juggernaut (J): 10' +
+              '\nQueen (Q): 15' +
+              '\nKing (K): 20' +
+              '\nAnimal Companion (A): 1' +
+              '\nJester (W): 0',
+            }
+          ]
+        }
+        await channel.send({ embeds: [attackEmbed] });
+        await interaction.reply('loading!');
+        await interaction.deleteReply();
+        break;
       }
       case 'suits': {
-        
+        const suitsEmbed = {
+          color: 0x0099ff,
+          fields: [
+            {
+              name: 'Suits',
+              value: 'C --> Clubs (♧)' +
+              '\nS --> Spade (♤)' +
+              '\nH --> Hearts (♡)' +
+              '\nD --> Diamond (♢)' +
+              '\nA --> Animal Companion' +
+              '\nW --> Jester',
+            }
+          ]
+        }
+        await channel.send({ embeds: [suitsEmbed] });
+        await interaction.reply('loading!');
+        await interaction.deleteReply();
+        break;
       }
       case 'learn': {
-        
+        const learnEmbed = {
+          color: 0x0099ff,
+          fields: [
+            {
+              name: 'Learn',
+              value: '[Official Rules](https://www.badgersfrommars.com/assets/Regicide-Rules.pdf)' +
+              '\n[How to Play Video](https://youtu.be/7XoRlKzLobk)',
+            }
+          ]
+        }
+        await channel.send({ embeds: [learnEmbed] });
+        await interaction.reply('loading!');
+        await interaction.deleteReply();
+        break;
       }
 			case 'new-game': {
 				if (currBotPhase !== BotPhase.IDLE) {
@@ -193,10 +235,10 @@ client.on('interactionCreate', async interaction => {
           break;
         }
         const member = interaction.member;
-        // if (members.find(m => m.id === member.id)) {
-        //   await interaction.reply({ content: 'You have already joined the game.', ephemeral: true });
-        //   break;
-        // }
+        if (members.find(m => m.id === member.id)) {
+          await interaction.reply({ content: 'You have already joined the game.', ephemeral: true });
+          break;
+        }
         members.push(member);
         channel.send(`**[${member.displayName} has joined the game]**`);
         await interaction.reply('loading!');
