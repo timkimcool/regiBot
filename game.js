@@ -87,15 +87,15 @@ function getRoyalCards() {
 }
 
 // fisher-yates shuffle
-function shuffleCards(cards) {
-  let currIdx = cards.length;
+function shuffle(arr) {
+  let currIdx = arr.length;
   let randomIdx;
   while (currIdx !== 0) {
     randomIdx = Math.floor(Math.random() * currIdx);
     currIdx--;
-    [cards[currIdx], cards[randomIdx]] = [cards[randomIdx], cards[currIdx]];
+    [arr[currIdx], arr[randomIdx]] = [arr[randomIdx], arr[currIdx]];
   }
-  return cards;
+  return arr;
 }
 
 function dealCards(state, numCards = Number.POSITIVE_INFINITY) {
@@ -122,12 +122,12 @@ function doesEveryoneHaveMaxHand(state) {
 }
 
 function initDecks(state) {
-  state.tavernDeck = shuffleCards(getPlayerCards(state));
+  state.tavernDeck = shuffle(getPlayerCards(state));
   const royalCards = getRoyalCards();
   state.castleDeck = [
-    ...shuffleCards(royalCards.filter(c => c.value === royalValues[0])),
-    ...shuffleCards(royalCards.filter(c => c.value === royalValues[1])),
-    ...shuffleCards(royalCards.filter(c => c.value === royalValues[2])),
+    ...shuffle(royalCards.filter(c => c.value === royalValues[0])),
+    ...shuffle(royalCards.filter(c => c.value === royalValues[1])),
+    ...shuffle(royalCards.filter(c => c.value === royalValues[2])),
   ];
 }
 
@@ -185,7 +185,7 @@ function makePlay(state, cards) {
 }
 
 function healFromDiscardPile(state, numCards) {
-  shuffleCards(state.discardPile);
+  shuffle(state.discardPile);
   while (numCards > 0 && state.discardPile.length > 0) {
     const card = state.discardPile.pop();
     state.tavernDeck.push(card);
@@ -353,13 +353,13 @@ function embedState(state) {
   let discardVal = state.discardPile.length;
   discardVal += discardVal > 0 ? ` (${stringifyCard(state.discardPile[state.discardPile.length - 1])})`  : '';
   fields.push({
-    name: 'Discard Pile',
-    value: discardVal,
+    name: 'Castle Deck',
+    value: '' + state.castleDeck.length,
     inline: true,
   });
   fields.push({
-    name: 'Castle Deck',
-    value: '' + state.castleDeck.length,
+    name: 'Discard Pile',
+    value: discardVal,
     inline: true,
   });
   fields.push({
@@ -370,7 +370,7 @@ function embedState(state) {
   // fields.push(deckEmbed);
   let royalEmbed = {};
   royalEmbed.name = 'Royals'
-  royalEmbed.value = `\nCard: ${stringifyCard(state.royal.activeCard)}`
+  royalEmbed.value = `\nCard: ${stringifyCard(state.royal.activeCard)}` + (state.isJesterPlayed ? ' {suit disabled}' : '') 
   + `\nAttack: ${getRoyalAttackValue(state)}`
   + `\nHealth: ${state.royal.health}`;
   fields.push(royalEmbed);
@@ -446,4 +446,5 @@ module.exports = {
   stringifyCard,
   stringifyState,
   embedState,
+  shuffle,
 }

@@ -51,6 +51,7 @@ client.once('ready', () => {
 });
 
 // bot state
+let starterId = null;
 let members = [];
 let memberThreads = [];
 const BotPhase = {
@@ -65,6 +66,7 @@ let gameState = null;
 const privacyStr = '--------------------------------------------------------------\n';
 
 function resetBotState() {
+  starterId = null;
   for (let i = 0; i < members.length; i++) {
     memberThreads[i].members.remove(members[i].id);
     memberThreads[i].leave();
@@ -106,13 +108,13 @@ client.on('interactionCreate', async interaction => {
             },
             {
               name: '/play',
-              value: 'Command for playing cards' +
-              '\nType: /play > enter > cards (ex. AS 4H) > enter'
+              value: 'Command for playing cards'
+                + '\nType: /play > enter > cards (ex. AS 4H) > enter'
             },
             {
               name: '/discard',
-              value: 'Command for discarding card when taking damage' +
-              '\n Similar input to /play except with /discard',
+              value: 'Command for discarding card when taking damage'
+                + '\n Similar input to /play except with /discard',
             },
             {
               name: '/end-game',
@@ -147,10 +149,10 @@ client.on('interactionCreate', async interaction => {
           fields: [
             {
               name: 'Specials',
-              value: 'Clubs (♧) --> Deal double damage' +
-              '\nSpade (♤) --> Shield from royal attack' +
-              '\nHearts (♡) --> Heal from discard pile' +
-              '\nDiamond (♢) --> Draw cards',
+              value: 'Clubs (♧) --> Deal double damage'
+                + '\nSpade (♤) --> Shield from royal attack'
+                + '\nHearts (♡) --> Heal from discard pile'
+                + '\nDiamond (♢) --> Draw cards',
             }
           ]
         }
@@ -165,11 +167,11 @@ client.on('interactionCreate', async interaction => {
           fields: [
             {
               name: 'Attacks',
-              value: 'Juggernaut (J): 10' +
-              '\nQueen (Q): 15' +
-              '\nKing (K): 20' +
-              '\nAnimal Companion (A): 1' +
-              '\nJester (W): 0',
+              value: 'Juggernaut (J): 10'
+                + '\nQueen (Q): 15'
+                + '\nKing (K): 20'
+                + '\nAnimal Companion (A): 1'
+                + '\nJester (W): 0',
             }
           ]
         }
@@ -184,12 +186,12 @@ client.on('interactionCreate', async interaction => {
           fields: [
             {
               name: 'Suits',
-              value: 'C --> Clubs (♧)' +
-              '\nS --> Spade (♤)' +
-              '\nH --> Hearts (♡)' +
-              '\nD --> Diamond (♢)' +
-              '\nA --> Animal Companion' +
-              '\nW --> Jester',
+              value: 'C --> Clubs (♧)'
+                + '\nS --> Spade (♤)'
+                + '\nH --> Hearts (♡)'
+                + '\nD --> Diamond (♢)'
+                + '\nA --> Animal Companion'
+                + '\nW --> Jester',
             }
           ]
         }
@@ -219,6 +221,7 @@ client.on('interactionCreate', async interaction => {
 					await interaction.reply({ content: 'Game is already in progress!', ephemeral: true });
           break;
 				}
+        starterId = interaction.member.id;
         currBotPhase = BotPhase.WAITING_FOR_JOIN;
         await channel.send('**[New Game: /join to enter the game]**');
         await interaction.reply('loading!');
@@ -250,10 +253,15 @@ client.on('interactionCreate', async interaction => {
 					await interaction.reply({ content: `Unable to start game because the BotPhase is: ${currBotPhase}`, ephemeral: true });
           break;
 				}
+        if (interaction.member.id !== starterId) {
+					await interaction.reply({ content: `Only the /new-game issuer can start the game`, ephemeral: true });
+          break;
+				}
         if (members.length < 2) {
 					channel.send(`**[Not enough players to start the game]**`);
           break;
         }
+        Game.shuffle(members);
         for (const member of members) {
           const thread = await channel.threads.create({
             name: `${member.displayName} hand`,
