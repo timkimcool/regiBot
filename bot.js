@@ -1,7 +1,7 @@
 const { MessageEmbed } = require('discord.js');
 module.exports = {
   bot: {
-    channel: '909847488725405747',
+    channel: process.env.guildId,
     setChannel: (id) => {
       channel = id;
     },

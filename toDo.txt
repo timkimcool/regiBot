@@ -1,7 +1,0 @@
-Bot
-  Functions
-    /Play
-    /Me
-    /Start
-    /Discard
-    /End
