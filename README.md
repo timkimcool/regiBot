@@ -29,8 +29,20 @@ and add them to your ranks so that life can be brought to the land once more."
             "token": "<your discord app token id>"
         }
         ```
-    - Uncomment line 7 of index.js and comment out lines 9-10
-    ![image](https://lh3.googleusercontent.com/pw/AM-JKLU99ro1qPuHTziHYZsfYifG0NV8f5qtmCbvlsQ_46v2xsgdKW9vBboLFxYXLJiiuzxwJQsZJy40ffuoIZ9rbgIF30mZPrxBjE5q_0GT3rnZZXv7I-Hr-vZrqrA1kG_PCJXUI9nJJcjZarPh7cl40jdn=w607-h192-no?authuser=0)
+    - Uncomment line 7 of index.js and comment out lines 8-10
+        ```
+        const { REST } = require('@discordjs/rest');
+        const { Client, Collection, Intents } = require('discord.js');
+        const { Routes } = require('discord-api-types/v9');
+        const fs = require('fs');
+        const Game = require('./game.js');
+
+        const { token, clientId, guildId } = require('./config.json');
+        // const token = process.env.token;
+        // const clientId = process.env.clientId;
+        // const guildId = process.env.guildId;
+        const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
+        ```
 4. Start the bot with node index.js
 
 ## Hosting regiBot on Heroku
