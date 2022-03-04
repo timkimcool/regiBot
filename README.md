@@ -9,7 +9,7 @@ and add them to your ranks so that life can be brought to the land once more."
 [Rules](https://www.badgersfrommars.com/assets/RegicideRulesA4.pdf)
 
 ## Hosting regiBot locally
-1. Intall discord.js
+1. Install discord.js
     ```javascript
     npm install discord.js
     ```
