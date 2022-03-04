@@ -10,7 +10,7 @@ and add them to your ranks so that life can be brought to the land once more."
 
 ## Hosting regiBot locally
 1. Intall discord.js
-    ```
+    ```javascript
     npm install discord.js
     ```
 2. Create a New Application in discord [here] (https://discord.com/developers/applications). For specific steps, follow [this guide](https://discordjs.guide/preparations/setting-up-a-bot-application.html)
@@ -22,7 +22,7 @@ and add them to your ranks so that life can be brought to the land once more."
 3. [Add bot to server](https://discordjs.guide/preparations/adding-your-bot-to-servers.html#bot-invite-links)
 4. Update index.js with your bot and channel information
     - Create a config.json file in the root directory
-        ```
+        ```javascript
         {
             "clientId": "<your discord app application id>",
             "guildId": "<discord server ID for the bot>",
@@ -30,7 +30,7 @@ and add them to your ranks so that life can be brought to the land once more."
         }
         ```
     - Uncomment line 7 of index.js and comment out lines 8-10
-        ```
+        ```javascript
         const { REST } = require('@discordjs/rest');
         const { Client, Collection, Intents } = require('discord.js');
         const { Routes } = require('discord-api-types/v9');
@@ -49,13 +49,13 @@ and add them to your ranks so that life can be brought to the land once more."
 1. Do steps 1 and 2 from Hosting regiBot locally
 2. [Get heroku-cli](https://devcenter.heroku.com/articles/heroku-cli)
 3. [Deploy to heokru](https://devcenter.heroku.com/articles/deploying-nodejs#deploy-your-application-to-heroku)
-    ```
+    ```javascript
     heroku login
     heroku create   // create your heroku app
     git push heroku main    // push repository to heroku
     ```
 4. [Configure](https://devcenter.heroku.com/articles/config-vars#managing-config-vars) your discord variables: clientId, guildId, and token.
-    ```
+    ```javascript
     heroku config:set clientId="<your discord app application id>"
     heroku config:set guildId="<discord server ID for the bot>"
     heroku config:set token="<your discord app token id>"
